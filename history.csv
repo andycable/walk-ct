@@ -1,76 +1,76 @@
-Date,Town,Number,StartedOrComplete
-2021-05-01,Monroe,1,Complete
-2021-05-01,Trumbull,2,Complete
-2021-05-02,Hamden,3,Complete
-2021-05-02,New Haven,4,Complete
-2021-05-08,Bridgeport,5,Started
-2021-05-10,Cheshire,6,Complete
-2021-05-10,Southington,7,Complete
-2021-05-22,Suffield,8,Started
-2021-05-22,East Granby,9,Complete
-2021-05-22,Granby,10,Started
-2021-05-22,Simsbury,11,Complete
-2021-05-22,Avon,12,Complete
-2021-05-22,Farmington,13,Complete
-2021-05-22,Plainville,14,Started
-2021-05-29,Woodbridge,15,Complete
-2021-05-29,Ansonia,16,Complete
-2021-05-29,Derby,17,Started
-2021-05-30,Shelton,18,Complete
-2021-06-17,Newtown,19,Complete
-2021-07-14,Easton,20,Complete
-2021-07-14,Redding,21,Started
-2021-07-17,Redding,21,Complete
-2021-07-17,Ridgefield,22,Complete
-2021-07-18,Brookfield,23,Complete
-2021-07-22,Bridgewater,24,Complete
-2021-07-22,Roxbury,25,Started
-2021-07-22,New Milford,26,Complete
-2021-07-24,Bethel,27,Started
-2021-07-24,Danbury,28,Complete
-2021-07-26,Bridgeport,5,Complete
-2021-07-26,Stratford,29,Complete
-2021-07-28,New Fairfield,30,Complete
-2021-08-07,Fairfield,31,Complete
-2021-08-07,Westport,32,Complete
-2021-08-07,Weston,33,Complete
-2021-08-08,Sherman,34,Complete
-2021-08-10,Stonington,35,Started
-2021-08-10,North Stonington,36,Started
-2021-08-13,Sterling,37,Complete
-2021-08-13,Plainfield,38,Complete
-2021-08-15,Southbury,39,Started
-2021-08-15,Oxford,40,Complete
-2021-08-15,Middlebury,41,Started
-2021-08-15,Naugatuck,42,Complete
-2021-08-15,Prospect,43,Complete
-2021-09-04,West Haven,44,Complete
-2021-09-05,Derby,17,Complete
-2021-09-05,Orange,45,Complete
-2021-09-05,Milford,46,Complete
-2021-09-06,Wilton,47,Complete
-2021-09-06,Norwalk,48,Complete
-2021-09-06,New Canaan,49,Complete
-2021-09-11,Greenwich,50,Complete
-2021-09-11,Stamford,51,Complete
-2021-09-11,Darien,52,Complete
-2021-09-12,Seymour,53,Complete
-2021-09-12,Beacon Falls,54,Complete
-2021-09-14,Southbury,39,Complete
-2021-09-15,Bethel,27,Complete
-2021-09-17,Middlebury,41,Complete
-2021-09-17,Waterbury,55,Started
-2021-09-18,Westbrook,56,Complete
-2021-09-18,Clinton,57,Complete
-2021-09-18,Madison,58,Complete
-2021-09-18,Guilford,59,Complete
-2021-09-18,Branford,60,Complete
-2021-09-19,East Haven,61,Complete
-2021-09-21,Bethany,62,Complete
-2021-09-23,Waterbury,55,Complete
-2021-09-24,Roxbury,25,Complete
-2021-09-25,Plainville,14,Complete
-2021-09-25,Bristol,63,Complete
-2021-09-25,Plymouth,64,Complete
-2021-09-25,Thomaston,65,Started
-2021-09-26,Wolcott,66,Complete
+Date,Town,Number,Status,Strava
+2021-05-01,Monroe,1,Complete,
+2021-05-01,Trumbull,2,Complete,
+2021-05-02,Hamden,3,Complete,https://www.strava.com/activities/5232520602
+2021-05-02,New Haven,4,Complete,https://www.strava.com/activities/5232520602
+2021-05-08,Bridgeport,5,Started,
+2021-05-10,Cheshire,6,Complete,
+2021-05-10,Southington,7,Complete,
+2021-05-22,Suffield,8,Started,
+2021-05-22,East Granby,9,Complete,
+2021-05-22,Granby,10,Started,
+2021-05-22,Simsbury,11,Complete,
+2021-05-22,Avon,12,Complete,
+2021-05-22,Farmington,13,Complete,
+2021-05-22,Plainville,14,Started,
+2021-05-29,Woodbridge,15,Complete,
+2021-05-29,Ansonia,16,Complete,
+2021-05-29,Derby,17,Started,
+2021-05-30,Shelton,18,Complete,
+2021-06-17,Newtown,19,Complete,
+2021-07-14,Easton,20,Complete,
+2021-07-14,Redding,21,Started,
+2021-07-17,Redding,21,Complete,
+2021-07-17,Ridgefield,22,Complete,
+2021-07-18,Brookfield,23,Complete,
+2021-07-22,Bridgewater,24,Complete,
+2021-07-22,Roxbury,25,Started,
+2021-07-22,New Milford,26,Complete,
+2021-07-24,Bethel,27,Started,
+2021-07-24,Danbury,28,Complete,
+2021-07-26,Bridgeport,5,Complete,
+2021-07-26,Stratford,29,Complete,
+2021-07-28,New Fairfield,30,Complete,
+2021-08-07,Fairfield,31,Complete,
+2021-08-07,Westport,32,Complete,
+2021-08-07,Weston,33,Complete,
+2021-08-08,Sherman,34,Complete,
+2021-08-10,Stonington,35,Started,
+2021-08-10,North Stonington,36,Started,
+2021-08-13,Sterling,37,Complete,
+2021-08-13,Plainfield,38,Complete,
+2021-08-15,Southbury,39,Started,
+2021-08-15,Oxford,40,Complete,
+2021-08-15,Middlebury,41,Started,
+2021-08-15,Naugatuck,42,Complete,
+2021-08-15,Prospect,43,Complete,
+2021-09-04,West Haven,44,Complete,
+2021-09-05,Derby,17,Complete,
+2021-09-05,Orange,45,Complete,
+2021-09-05,Milford,46,Complete,
+2021-09-06,Wilton,47,Complete,
+2021-09-06,Norwalk,48,Complete,
+2021-09-06,New Canaan,49,Complete,
+2021-09-11,Greenwich,50,Complete,
+2021-09-11,Stamford,51,Complete,
+2021-09-11,Darien,52,Complete,
+2021-09-12,Seymour,53,Complete,
+2021-09-12,Beacon Falls,54,Complete,
+2021-09-14,Southbury,39,Complete,
+2021-09-15,Bethel,27,Complete,
+2021-09-17,Middlebury,41,Complete,
+2021-09-17,Waterbury,55,Started,
+2021-09-18,Westbrook,56,Complete,
+2021-09-18,Clinton,57,Complete,
+2021-09-18,Madison,58,Complete,
+2021-09-18,Guilford,59,Complete,
+2021-09-18,Branford,60,Complete,
+2021-09-19,East Haven,61,Complete,
+2021-09-21,Bethany,62,Complete,
+2021-09-23,Waterbury,55,Complete,
+2021-09-24,Roxbury,25,Complete,
+2021-09-25,Plainville,14,Complete,
+2021-09-25,Bristol,63,Complete,
+2021-09-25,Plymouth,64,Complete,
+2021-09-25,Thomaston,65,Started,
+2021-09-26,Wolcott,66,Complete,
