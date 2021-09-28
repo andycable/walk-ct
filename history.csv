@@ -1,22 +1,24 @@
 Date,Town,Number,Status,Strava
-2021-05-01,Monroe,1,Complete,
-2021-05-01,Trumbull,2,Complete,
+2021-05-01,Monroe,1,Complete,https://www.strava.com/activities/5225530077
+2021-05-01,Trumbull,2,Complete,https://www.strava.com/activities/5225530077
 2021-05-02,Hamden,3,Complete,https://www.strava.com/activities/5232520602
 2021-05-02,New Haven,4,Complete,https://www.strava.com/activities/5232520602
-2021-05-08,Bridgeport,5,Started,
-2021-05-10,Cheshire,6,Complete,
-2021-05-10,Southington,7,Complete,
-2021-05-22,Suffield,8,Started,
-2021-05-22,East Granby,9,Complete,
-2021-05-22,Granby,10,Started,
-2021-05-22,Simsbury,11,Complete,
-2021-05-22,Avon,12,Complete,
-2021-05-22,Farmington,13,Complete,
-2021-05-22,Plainville,14,Started,
-2021-05-29,Woodbridge,15,Complete,
-2021-05-29,Ansonia,16,Complete,
-2021-05-29,Derby,17,Started,
-2021-05-30,Shelton,18,Complete,
+2021-05-08,Bridgeport,5,Started,https://www.strava.com/activities/5263540033
+2021-05-10,Cheshire,6,Complete,https://www.strava.com/activities/5275101408
+2021-05-10,Southington,7,Complete,https://www.strava.com/activities/5275101408
+2021-05-22,Suffield,8,Started,https://www.strava.com/activities/5341482211
+2021-05-22,East Granby,9,Complete,https://www.strava.com/activities/5341482211
+2021-05-22,Granby,10,Started,https://www.strava.com/activities/5341482211
+2021-05-22,Simsbury,11,Complete,https://www.strava.com/activities/5341482211
+2021-05-22,Avon,12,Complete,https://www.strava.com/activities/5341482211
+2021-05-22,Farmington,13,Complete,https://www.strava.com/activities/5341482211
+2021-05-22,Plainville,14,Started,https://www.strava.com/activities/5341482211
+2021-05-29,Woodbridge,15,Started,https://www.strava.com/activities/5377192280
+2021-05-29,Woodbridge,15,Complete,https://www.strava.com/activities/5379787313
+2021-05-29,Ansonia,16,Complete,https://www.strava.com/activities/5379787313
+2021-05-29,Derby,17,Started,https://www.strava.com/activities/5379787313
+2021-05-29,Shelton,18,Started,https://www.strava.com/activities/5379787313
+2021-05-30,Shelton,18,Complete,https://www.strava.com/activities/5386208201
 2021-06-17,Newtown,19,Complete,
 2021-07-14,Easton,20,Complete,
 2021-07-14,Redding,21,Started,
