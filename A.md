@@ -5,4 +5,10 @@
 | [A](./A.md) | [B](./B.md) |  [C](./C.md) | 
 | [D](./D.md) | [E](./E.md) |  [F](./F.md) | 
 
-[Middlebury](https://citystrides.com/users/43318/cities/187932) [Monroe](https://citystrides.com/users/43318/cities/187940)
+| City |
+| --- |
+| [Andover]() |
+| [Ansonia](https://citystrides.com/users/43318/cities/187924) |
+| [Ashford]() |
+| [Avon]() |
+
