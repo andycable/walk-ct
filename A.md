@@ -1,9 +1,9 @@
-# walk-ct
 
-| Select | A | Letter |
-| --- | --- | --- |
-| [A](./A.md) | [B](./B.md) |  [C](./C.md) | 
-| [D](./D.md) | [E](./E.md) |  [F](./F.md) | 
+| [A](./A.md) |
+[B](./B.md) |
+[C](./C.md) | 
+[D](./D.md) |
+
 
 | City |
 | --- |
