@@ -7,8 +7,8 @@
 
 | City |
 | --- |
-| [Andover]() |
+| [Andover](https://citystrides.com/users/43318/cities/188025) |
 | [Ansonia](https://citystrides.com/users/43318/cities/187924) |
-| [Ashford]() |
-| [Avon]() |
+| [Ashford](https://citystrides.com/users/43318/cities/187987) |
+| [Avon](https://citystrides.com/users/43318/cities/171375) |
 
