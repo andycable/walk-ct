@@ -1,12 +1,14 @@
-Select a town to view the map.
+##Select a town to view the map.
 
-| Town |
+| **A** |
 | --- |
 | [Andover](https://citystrides.com/users/43318/cities/188025) |
 | [Ansonia](https://citystrides.com/users/43318/cities/187924) |
 | [Ashford](https://citystrides.com/users/43318/cities/187987) |
 | [Avon](https://citystrides.com/users/43318/cities/171375) |
-| |
+
+| **B** |
+| --- |
 | [Barkhamsted](https://citystrides.com/users/43318/cities/187951) |
 | [Beacon Falls](https://citystrides.com/users/43318/cities/187933) |
 | [Berlin](https://citystrides.com/users/43318/cities/187814) |
@@ -23,7 +25,9 @@ Select a town to view the map.
 | [Brookfield](https://citystrides.com/users/43318/cities/2467) |
 | [Brooklyn](https://citystrides.com/users/43318/cities/187982) |
 | [Burlington](https://citystrides.com/users/43318/cities/171374) |
-| |
+
+| **C** |
+| --- |
 | [Canaan](https://citystrides.com/users/43318/cities/187972) |
 | [Canterbury](https://citystrides.com/users/43318/cities/187977) |
 | [Canton](https://citystrides.com/users/43318/cities/171377) |
@@ -37,13 +41,17 @@ Select a town to view the map.
 | [Cornwall](https://citystrides.com/users/43318/cities/187970) |
 | [Coventry](https://citystrides.com/users/43318/cities/188024) |
 | [Cromwell](https://citystrides.com/users/43318/cities/187868) |
-| |
+
+| **D** |
+| --- |
 | [Danbury](https://citystrides.com/users/43318/cities/187942) |
 | [Darien](https://citystrides.com/users/43318/cities/2449) |
 | [Deep River](https://citystrides.com/users/43318/cities/188013) |
 | [Derby](https://citystrides.com/users/43318/cities/187926) |
 | [Durham](https://citystrides.com/users/43318/cities/188008) |
-| |
+
+| **E** |
+| --- |
 | [East Granby](https://citystrides.com/users/43318/cities/187917) |
 | [East Haddam](https://citystrides.com/users/43318/cities/188010) |
 | [East Hampton](https://citystrides.com/users/43318/cities/187869) |
@@ -56,11 +64,15 @@ Select a town to view the map.
 | [Ellington](https://citystrides.com/users/43318/cities/188020) |
 | [Enfield](https://citystrides.com/users/43318/cities/187816) |
 | [Essex](https://citystrides.com/users/43318/cities/188014) |
-| |
+
+| **F** |
+| --- |
 | [Fairfield](https://citystrides.com/users/43318/cities/187948) |
 | [Farmington](https://citystrides.com/users/43318/cities/171378) |
 | [Franklin](https://citystrides.com/users/43318/cities/187998) |
-| |
+
+| **G** |
+| --- |
 | [Glastonbury](https://citystrides.com/users/43318/cities/187870) |
 | [Goshen](https://citystrides.com/users/43318/cities/187956) |
 | [Granby](https://citystrides.com/users/43318/cities/187921) |
@@ -68,7 +80,9 @@ Select a town to view the map.
 | [Griswold](https://citystrides.com/users/43318/cities/187890) |
 | [Groton](https://citystrides.com/users/43318/cities/2505) |
 | [Guilford](https://citystrides.com/users/43318/cities/187929) |
-| |
+
+| **H** |
+| --- |
 | [Haddam](https://citystrides.com/users/43318/cities/188009) |
 | [Hamden](https://citystrides.com/users/43318/cities/2435) |
 | [Hampton](https://citystrides.com/users/43318/cities/188032) |
@@ -76,17 +90,23 @@ Select a town to view the map.
 | [Hartland](https://citystrides.com/users/43318/cities/188750) |
 | [Harwinton](https://citystrides.com/users/43318/cities/187958) |
 | [Hebron](https://citystrides.com/users/43318/cities/188027) |
-| |
+
+| **K** |
+| --- |
 | [Kent](https://citystrides.com/users/43318/cities/187969) |
 | [Killingly](https://citystrides.com/users/43318/cities/187983) |
 | [Killingworth](https://citystrides.com/users/43318/cities/188011) |
-| |
+
+| **L** |
+| --- |
 | [Lebanon](https://citystrides.com/users/43318/cities/187997) |
 | [Ledyard](https://citystrides.com/users/43318/cities/188000) |
 | [Lisbon](https://citystrides.com/users/43318/cities/187891) |
 | [Litchfield](https://citystrides.com/users/43318/cities/187957) |
 | [Lyme](https://citystrides.com/users/43318/cities/187990) |
-| |
+
+| **M** |
+| --- |
 | [Madison](https://citystrides.com/users/43318/cities/187928) |
 | [Manchester](https://citystrides.com/users/43318/cities/187862) |
 | [Mansfield](https://citystrides.com/users/43318/cities/188023) |
@@ -99,7 +119,9 @@ Select a town to view the map.
 | [Monroe](https://citystrides.com/users/43318/cities/187940) |
 | [Montville](https://citystrides.com/users/43318/cities/187993) |
 | [Morris](https://citystrides.com/users/43318/cities/187961) |
-| |
+
+| **N** |
+| --- |
 | [Naugatuck](https://citystrides.com/users/43318/cities/187871) |
 | [New Britain](https://citystrides.com/users/43318/cities/171379) |
 | [New Canaan](https://citystrides.com/users/43318/cities/187872) |
@@ -117,12 +139,16 @@ Select a town to view the map.
 | [North Stonington](https://citystrides.com/users/43318/cities/188003) |
 | [Norwalk](https://citystrides.com/users/43318/cities/2458) |
 | [Norwich](https://citystrides.com/users/43318/cities/2501) |
-| |
+
+| **O** |
+| --- |
 | [Old Lyme](https://citystrides.com/users/43318/cities/187991) |
 | [Old Saybrook](https://citystrides.com/users/43318/cities/188017) |
 | [Orange](https://citystrides.com/users/43318/cities/192105) |
 | [Oxford](https://citystrides.com/users/43318/cities/187873) |
-| |
+
+| **P** |
+| --- |
 | [Plainfield](https://citystrides.com/users/43318/cities/187976) |
 | [Plainville](https://citystrides.com/users/43318/cities/171381) |
 | [Plymouth](https://citystrides.com/users/43318/cities/187959) |
@@ -131,12 +157,16 @@ Select a town to view the map.
 | [Preston](https://citystrides.com/users/43318/cities/187874) |
 | [Prospect](https://citystrides.com/users/43318/cities/187935) |
 | [Putnam](https://citystrides.com/users/43318/cities/187984) |
-| |
+
+| **R** |
+| --- |
 | [Redding](https://citystrides.com/users/43318/cities/187949) |
 | [Ridgefield](https://citystrides.com/users/43318/cities/187941) |
 | [Rocky Hill](https://citystrides.com/users/43318/cities/2553) |
 | [Roxbury](https://citystrides.com/users/43318/cities/187966) |
-| |
+
+| **S** |
+| --- |
 | [Salem](https://citystrides.com/users/43318/cities/187994) |
 | [Salisbury](https://citystrides.com/users/43318/cities/187974) |
 | [Scotland](https://citystrides.com/users/43318/cities/187978) |
@@ -156,18 +186,26 @@ Select a town to view the map.
 | [Stonington](https://citystrides.com/users/43318/cities/2534) |
 | [Stratford](https://citystrides.com/users/43318/cities/171384) |
 | [Suffield](https://citystrides.com/users/43318/cities/187863) |
-| |
+
+| **T** |
+| --- |
 | [Thomaston](https://citystrides.com/users/43318/cities/2574) |
 | [Thompson](https://citystrides.com/users/43318/cities/187988) |
 | [Tolland](https://citystrides.com/users/43318/cities/187903) |
 | [Torrington](https://citystrides.com/users/43318/cities/187955) |
 | [Trumbull](https://citystrides.com/users/43318/cities/187938) |
-| |
+
+| **U** |
+| --- |
 | [Union](https://citystrides.com/users/43318/cities/188018) |
-| |
+
+| **V** |
+| --- |
 | [Vernon](https://citystrides.com/users/43318/cities/187877) |
 | [Voluntown](https://citystrides.com/users/43318/cities/188004) |
-| |
+
+| **W** |
+| --- |
 | [Wallingford](https://citystrides.com/users/43318/cities/2565) |
 | [Warren](https://citystrides.com/users/43318/cities/187963) |
 | [Washington](https://citystrides.com/users/43318/cities/187964) |
