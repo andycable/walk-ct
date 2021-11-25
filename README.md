@@ -1,2 +1,5 @@
+# Walk through all 169 towns in Connecticut
 
-| [Towns](./Towns.md) |
+- [Planned Routes](./Maps.md)
+- [List of Towns](./Towns.md)
+
