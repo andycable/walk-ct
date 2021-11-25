@@ -1,4 +1,4 @@
-##Select a town to view the map.
+**Select a town to view the map.**
 
 | **A** |
 | --- |
