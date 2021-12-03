@@ -2,4 +2,5 @@
 
 - [Planned Routes](src/Maps.md)
 - [List of Towns](src/Towns.md)
+- [CityStrides](src/CityStrides.md)
 
