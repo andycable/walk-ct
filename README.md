@@ -2,5 +2,4 @@
 
 - [Planned Routes](src/Maps.md)
 - [List of Towns](src/Towns.md)
-- [CityStrides](src/CityStrides.md)
-
+- [Current CityStrides Map](https://citystrides.com/users/43318/map#41.228,-73.1&7.5175)
