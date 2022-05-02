@@ -13,3 +13,4 @@ del C:\export_55533644\activities\6120818566.gpx
 del C:\export_55533644\activities\6122907800.gpx
 del C:\export_55533644\activities\6126538162.gpx
 del C:\export_55533644\activities\6920599091.gpx
+del C:\export_55533644\activities\7073478252.gpx
