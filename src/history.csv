@@ -40,8 +40,8 @@ Date,Town,Number,Status,Strava
 2021-08-08,Sherman,34,Complete,https://www.strava.com/activities/5758653768
 2021-08-10,Stonington,35,Started,https://www.strava.com/activities/5771945903
 2021-08-10,North Stonington,36,Started,https://www.strava.com/activities/5771945903
-2021-08-13,Sterling,37,Complete,https://www.strava.com/activities/5787285827
-2021-08-13,Plainfield,38,Complete,https://www.strava.com/activities/5787285827
+2021-08-13,Sterling,37,Started,https://www.strava.com/activities/5787285827
+2021-08-13,Plainfield,38,Started,https://www.strava.com/activities/5787285827
 2021-08-15,Southbury,39,Started,https://www.strava.com/activities/5798553872
 2021-08-15,Oxford,40,Complete,https://www.strava.com/activities/5798553872
 2021-08-15,Middlebury,41,Started,https://www.strava.com/activities/5798553872
@@ -181,3 +181,5 @@ Date,Town,Number,Status,Strava
 2022-05-23,North Canaan,143,Complete,https://www.strava.com/activities/7192263115
 2022-05-26,Glastonbury,144,Started,https://www.strava.com/activities/7205607979
 2022-05-27,Glastonbury,144,Complete,https://www.strava.com/activities/7213478158
+2022-05-31,Plainfield,38,Complete,https://www.strava.com/activities/7232538376
+
