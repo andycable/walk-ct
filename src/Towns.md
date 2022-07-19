@@ -31,7 +31,7 @@
 | [Canaan](https://citystrides.com/users/43318/cities/187972) |
 | [Canterbury](https://citystrides.com/users/43318/cities/187977) |
 | [Canton](https://citystrides.com/users/43318/cities/171377) |
-| [Chaplin](https://citystrides.com/users/43318/cities/188032) |
+| [Chaplin](https://citystrides.com/users/43318/cities/227776) |
 | [Cheshire](https://citystrides.com/users/43318/cities/187867) |
 | [Chester](https://citystrides.com/users/43318/cities/188012) |
 | [Clinton](https://citystrides.com/users/43318/cities/188015) |
@@ -190,7 +190,7 @@
 | **T** |
 | --- |
 | [Thomaston](https://citystrides.com/users/43318/cities/2574) |
-| [Thompson](https://citystrides.com/users/43318/cities/187988) |
+| [Thompson](https://citystrides.com/users/43318/cities/229063) |
 | [Tolland](https://citystrides.com/users/43318/cities/187903) |
 | [Torrington](https://citystrides.com/users/43318/cities/187955) |
 | [Trumbull](https://citystrides.com/users/43318/cities/187938) |
