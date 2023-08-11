@@ -30,6 +30,19 @@
 
 <details>
 <summary>C</summary>
+<h4><a href="https://citystrides.com/users/43318/cities/187972">Canaan</a></h4>
+<h4><a href="https://citystrides.com/users/43318/cities/187977">Canterbury</a></h4>
+<h4><a href="https://citystrides.com/users/43318/cities/171377">Canton</a></h4>
+<h4><a href="https://citystrides.com/users/43318/cities/227776">Chaplin</a></h4>
+<h4><a href="https://citystrides.com/users/43318/cities/187867">Cheshire</a></h4>
+<h4><a href="https://citystrides.com/users/43318/cities/188012">Chester</a></h4>
+<h4><a href="https://citystrides.com/users/43318/cities/188015">Clinton</a></h4>
+<h4><a href="https://citystrides.com/users/43318/cities/188031">Colchester</a></h4>
+<h4><a href="https://citystrides.com/users/43318/cities/187950">Colebrook</a></h4>
+<h4><a href="https://citystrides.com/users/43318/cities/188026">Columbia</a></h4>
+<h4><a href="https://citystrides.com/users/43318/cities/187970">Cornwall</a></h4>
+<h4><a href="https://citystrides.com/users/43318/cities/188024">Coventry</a></h4>
+<h4><a href="https://citystrides.com/users/43318/cities/187868">Cromwell</a></h4>
 </details>
 
 <details>
@@ -51,21 +64,7 @@
 <details>
 <summary>H</summary>
 </details>
-| **C** |
-| --- |
-| [Canaan](https://citystrides.com/users/43318/cities/187972) |
-| [Canterbury](https://citystrides.com/users/43318/cities/187977) |
-| [Canton](https://citystrides.com/users/43318/cities/171377) |
-| [Chaplin](https://citystrides.com/users/43318/cities/227776) |
-| [Cheshire](https://citystrides.com/users/43318/cities/187867) |
-| [Chester](https://citystrides.com/users/43318/cities/188012) |
-| [Clinton](https://citystrides.com/users/43318/cities/188015) |
-| [Colchester](https://citystrides.com/users/43318/cities/188031) |
-| [Colebrook](https://citystrides.com/users/43318/cities/187950) |
-| [Columbia](https://citystrides.com/users/43318/cities/188026) |
-| [Cornwall](https://citystrides.com/users/43318/cities/187970) |
-| [Coventry](https://citystrides.com/users/43318/cities/188024) |
-| [Cromwell](https://citystrides.com/users/43318/cities/187868) |
+
 
 | **D** |
 | --- |
