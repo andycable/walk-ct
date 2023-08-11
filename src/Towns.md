@@ -1,24 +1,12 @@
 **Select a town to view the map.**
 
 <details>
-    <summary>A</summary>
+<summary>A</summary>
 <h4><a href="https://citystrides.com/users/43318/cities/188025">Andover</a></h4>
 <h4><a href="https://citystrides.com/users/43318/cities/187924">Ansonia</a></h4>
 <h4><a href="https://citystrides.com/users/43318/cities/187987">Ashford</a></h4>
 <h4><a href="https://citystrides.com/users/43318/cities/171375">Avon</a></h4>
-
-| [Andover](https://citystrides.com/users/43318/cities/188025) |
-| [Ansonia](https://citystrides.com/users/43318/cities/187924) |
-| [Ashford](https://citystrides.com/users/43318/cities/187987) |
-| [Avon](https://citystrides.com/users/43318/cities/171375) |
 </details>
-
-| **A** |
-| --- |
-| [Andover](https://citystrides.com/users/43318/cities/188025) |
-| [Ansonia](https://citystrides.com/users/43318/cities/187924) |
-| [Ashford](https://citystrides.com/users/43318/cities/187987) |
-| [Avon](https://citystrides.com/users/43318/cities/171375) |
 
 | **B** |
 | --- |
