@@ -51,26 +51,6 @@
 <details>
 <summary>H</summary>
 </details>
-
-| **B** |
-| --- |
-| [Barkhamsted](https://citystrides.com/users/43318/cities/187951) |
-| [Beacon Falls](https://citystrides.com/users/43318/cities/187933) |
-| [Berlin](https://citystrides.com/users/43318/cities/187814) |
-| [Bethany](https://citystrides.com/users/43318/cities/187934) |
-| [Bethel](https://citystrides.com/users/43318/cities/187947) |
-| [Bethlehem](https://citystrides.com/users/43318/cities/187962) |
-| [Bloomfield](https://citystrides.com/users/43318/cities/171373) |
-| [Bolton](https://citystrides.com/users/43318/cities/188022) |
-| [Bozrah](https://citystrides.com/users/43318/cities/187995) |
-| [Branford](https://citystrides.com/users/43318/cities/187930) |
-| [Bridgeport](https://citystrides.com/users/43318/cities/187937) |
-| [Bridgewater](https://citystrides.com/users/43318/cities/187967) |
-| [Bristol](https://citystrides.com/users/43318/cities/171376) |
-| [Brookfield](https://citystrides.com/users/43318/cities/2467) |
-| [Brooklyn](https://citystrides.com/users/43318/cities/187982) |
-| [Burlington](https://citystrides.com/users/43318/cities/171374) |
-
 | **C** |
 | --- |
 | [Canaan](https://citystrides.com/users/43318/cities/187972) |
