@@ -10,6 +10,22 @@
 
 <details>
 <summary>B</summary>
+<h4><a href="https://citystrides.com/users/43318/cities/187951">Barkhamsted</a></h4>
+<h4><a href="https://citystrides.com/users/43318/cities/187933">Beacon Falls</a></h4>
+<h4><a href="https://citystrides.com/users/43318/cities/187814">Berlin</a></h4>
+<h4><a href="https://citystrides.com/users/43318/cities/187934">Bethany</a></h4>
+<h4><a href="https://citystrides.com/users/43318/cities/187947">Bethel</a></h4>
+<h4><a href="https://citystrides.com/users/43318/cities/187962">Bethlehem</a></h4>
+<h4><a href="https://citystrides.com/users/43318/cities/171373">Bloomfield</a></h4>
+<h4><a href="https://citystrides.com/users/43318/cities/188022">Bolton</a></h4>
+<h4><a href="https://citystrides.com/users/43318/cities/187995">Bozrah</a></h4>
+<h4><a href="https://citystrides.com/users/43318/cities/187930">Branford</a></h4>
+<h4><a href="https://citystrides.com/users/43318/cities/187937">Bridgeport</a></h4>
+<h4><a href="https://citystrides.com/users/43318/cities/187967">Bridgewater</a></h4>
+<h4><a href="https://citystrides.com/users/43318/cities/171376">Bristol</a></h4>
+<h4><a href="https://citystrides.com/users/43318/cities/2467">Brookfield</a></h4>
+<h4><a href="https://citystrides.com/users/43318/cities/187982">Brooklyn</a></h4>
+<h4><a href="https://citystrides.com/users/43318/cities/171374">Burlington</a></h4>
 </details>
 
 <details>
