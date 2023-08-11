@@ -1,5 +1,10 @@
 **Select a town to view the map.**
 
+<details>
+    <summary>PRIVACY DISCLOSURE</summary>
+    You are being watched.
+</details>
+
 | **A** |
 | --- |
 | [Andover](https://citystrides.com/users/43318/cities/188025) |
