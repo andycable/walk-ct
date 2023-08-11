@@ -1,8 +1,11 @@
 **Select a town to view the map.**
 
 <details>
-    <summary>PRIVACY DISCLOSURE</summary>
-    You are being watched.
+    <summary>**A**</summary>
+| [Andover](https://citystrides.com/users/43318/cities/188025) |
+| [Ansonia](https://citystrides.com/users/43318/cities/187924) |
+| [Ashford](https://citystrides.com/users/43318/cities/187987) |
+| [Avon](https://citystrides.com/users/43318/cities/171375) |
 </details>
 
 | **A** |
