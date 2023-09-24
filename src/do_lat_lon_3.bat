@@ -19,16 +19,16 @@ sed -i -b s/95,/90,/g out\all.5.txt
 echo lat,long,extra > C:\Repo\walk-ct\src\all.5.uniq.csv
 sort out\all.5.txt|uniq >>C:\Repo\walk-ct\src\all.5.uniq.csv
 
-sed -i -b s/05,/25,/g out\all.3.txt
-sed -i -b s/15,/25,/g out\all.3.txt
-sed -i -b s/25,/25,/g out\all.3.txt
-sed -i -b s/35,/25,/g out\all.3.txt
-sed -i -b s/45,/25,/g out\all.3.txt
-sed -i -b s/55,/75,/g out\all.3.txt
-sed -i -b s/65,/75,/g out\all.3.txt
-sed -i -b s/75,/75,/g out\all.3.txt
-sed -i -b s/85,/75,/g out\all.3.txt
-sed -i -b s/95,/75,/g out\all.3.txt
+:sed -i -b s/05,/25,/g out\all.3.txt
+:sed -i -b s/15,/25,/g out\all.3.txt
+:sed -i -b s/25,/25,/g out\all.3.txt
+:sed -i -b s/35,/25,/g out\all.3.txt
+:sed -i -b s/45,/25,/g out\all.3.txt
+:sed -i -b s/55,/75,/g out\all.3.txt
+:sed -i -b s/65,/75,/g out\all.3.txt
+:sed -i -b s/75,/75,/g out\all.3.txt
+:sed -i -b s/85,/75,/g out\all.3.txt
+:sed -i -b s/95,/75,/g out\all.3.txt
 
 echo lat,long,extra > C:\Repo\walk-ct\src\all.3.uniq.csv
 sort out\all.3.txt|uniq >>C:\Repo\walk-ct\src\all.3.uniq.csv
