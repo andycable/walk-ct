@@ -20,12 +20,10 @@ ct_boundary <- getbb("Connecticut") %>% opq() %>% add_osm_feature(key = "boundar
 
 
 file_path <- "distance_3.csv"
-file_path2 <- "distance_25.csv"
 delta = 0.0005
 
 
 my_data <- read.csv(file_path)  %>% select(long, lat, Dist) %>% filter(Dist < 3.5)
-missing_data <- read.csv(file_path2) %>% select(long, lat, Dist)
 my_data$colorx <- ifelse(my_data$Dist < 0.0, "under 0.0"
                 , ifelse(my_data$Dist < 0.91, "under 1.0"
                 , ifelse(my_data$Dist < 1.01, "zboundary"
@@ -47,8 +45,6 @@ my_plot <- ggplot() +
   geom_polygon(data = ct_map, aes(x = long, y = lat, group = group), fill = "white", color = "black") +
   geom_rect(data = my_ct_data, aes(xmin = long-delta, xmax = long+delta, ymin = lat-delta, ymax = lat+delta, fill = colorx)) +
   geom_polygon(data = ct_counties, aes(x = long, y = lat, group = group), fill=NA, color = "black") +
-#  geom_rect(data = missing_data, aes(xmin = long-0.025, xmax = long+0.025, ymin = lat-0.025, ymax = lat+0.025, fill = "Missing")) +
-#  geom_sf(data = ct_boundary$osm_lines, inherit.aes = FALSE, fill=NA, color = "black", size = 0.1) +
   geom_sf(data = ct_boundary$osm_lines, inherit.aes = TRUE, fill=NA, color = "black", size = 0.1) +
   scale_size_continuous(range = c(3, 5)) + # Adjust the size range as needed
   coord_fixed(ratio = 1.4) + # Ensure aspect ratio is correct
