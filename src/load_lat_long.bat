@@ -17,6 +17,5 @@ bcp Lat_Long_2 IN R:\walk-ct\src\all.2.uniq.csv -F 2 -c -t, -S %DEV_SERVER% -U %
 sqlcmd -S %DEV_SERVER% -U %USER% -P %PASS% -d Weather -Q "TRUNCATE TABLE Lat_Long_3"
 bcp Lat_Long_3 IN R:\walk-ct\src\all.3.uniq.csv -F 2 -c -t, -S %DEV_SERVER% -U %USER% -P %PASS% -d Weather
 
-:: sqlcmd -S %DEV_SERVER% -U %USER% -P %PASS% -d Weather -Q "TRUNCATE TABLE Lat_Long_5"
-:: bcp Lat_Long_5 IN R:\walk-ct\src\all.5.uniq.csv -F 2 -c -t, -S %DEV_SERVER% -U %USER% -P %PASS% -d Weather
-
+sqlcmd -S %DEV_SERVER% -U %USER% -P %PASS% -d Weather -Q "TRUNCATE TABLE Lat_Long_5"
+bcp Lat_Long_5 IN R:\walk-ct\src\all.5.uniq.csv -F 2 -c -t, -S %DEV_SERVER% -U %USER% -P %PASS% -d Weather
