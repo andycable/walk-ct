@@ -33,12 +33,12 @@ my_data$colorx <- ifelse(my_data$Dist < 0.0, "under 0.0"
                 , ifelse(my_data$Dist < 1.92, "under 2.0"
                 , "under 1.0")))))))
 my_data$color2 <- ifelse(my_data$Dist < 0.0, "under 0.0"
-                , ifelse(my_data$Dist < 0.31, "under 0.3"
-                , ifelse(my_data$Dist < 0.61, "under 0.6"
-                , ifelse(my_data$Dist < 1.11, "under 1.4"
+                , ifelse(my_data$Dist < 0.33, "under 0.2"
+                , ifelse(my_data$Dist < 0.66, "under 0.4"
+                , ifelse(my_data$Dist < 0.99, "under 0.6"
+                , ifelse(my_data$Dist < 1.11, "zboundary"
                 , ifelse(my_data$Dist < 1.21, "zboundary"
-                , ifelse(my_data$Dist < 1.71, "under 2.0"
-                , ifelse(my_data$Dist < 1.72, "under 2.0"
+                , ifelse(my_data$Dist < 1.31, "zboundary"
                 , "zboundary")))))))
 
 ct_boundary_coordinates <- ct_map %>% select(long, lat)
