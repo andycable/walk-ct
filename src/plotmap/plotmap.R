@@ -19,7 +19,7 @@ ct_counties <- map_data("county", region = "connecticut")
 ct_boundary <- getbb("Connecticut") %>% opq() %>% add_osm_feature(key = "boundary", value = "administrative")# %>% osmdata_sf()
 
 
-file_path <- "distance_3.csv"
+file_path <- "Distance_3_ct.csv"
 delta = 0.0005
 
 
@@ -40,6 +40,13 @@ my_data$color2 <- ifelse(my_data$Dist < 0.0, "under 0.0"
                 , ifelse(my_data$Dist < 1.21, "zboundary"
                 , ifelse(my_data$Dist < 1.31, "zboundary"
                 , "zboundary")))))))
+
+# Mark the largest contiguous unwalked area (western border strip in NW CT)
+my_data$color2_highlight <- my_data$color2
+largest_unwalked <- my_data$Dist > 1.0 &
+  my_data$long >= -73.5535 & my_data$long <= -73.4875 &
+  my_data$lat >= 41.7005 & my_data$lat <= 42.0505
+my_data$color2_highlight[largest_unwalked] <- "largest_unwalked"
 
 ct_boundary_coordinates <- ct_map %>% select(long, lat)
 
@@ -72,4 +79,49 @@ my_plot2 <- ggplot() +
 # Save the ggplot as a PNG file
 ggsave("AndyWalksConnecticut.png", my_plot, width = 15, height = 15)
 ggsave("Rivers.png", my_plot2, width = 15, height = 15)
+
+# NW zoom with largest unwalked area highlighted in yellow
+my_plot_nw <- ggplot() +
+  geom_polygon(data = ct_map, aes(x = long, y = lat, group = group), fill = "white", color = "black") +
+  geom_rect(data = my_ct_data, aes(xmin = long-delta, xmax = long+delta, ymin = lat-delta, ymax = lat+delta, fill = color2_highlight)) +
+  geom_polygon(data = ct_counties, aes(x = long, y = lat, group = group), fill=NA, color = "black") +
+  geom_sf(data = ct_boundary$osm_lines, inherit.aes = TRUE, fill=NA, color = "black", size = 0.1) +
+  scale_fill_manual(values = c("under 0.0" = "#F8766D", "under 0.2" = "#F8766D", "under 0.4" = "#B79F00", "under 0.6" = "#00BA38", "zboundary" = "#619CFF", "largest_unwalked" = "yellow")) +
+  coord_fixed(ratio = 1.4, xlim = c(-73.73, -73.2), ylim = c(41.7, 42.05)) +
+  theme_minimal() +
+  labs(title = "NW Connecticut - Largest Unwalked Area Highlighted")
+ggsave("Rivers_NW_zoom_highlight.png", my_plot_nw, width = 15, height = 15)
+
+# Distance heatmap: color each cell by 0.25-mile distance bins
+my_ct_data$dist_bin <- cut(my_ct_data$Dist,
+  breaks = c(0, 0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 2.25, 2.50, Inf),
+  labels = c("0 - 0.25", "0.25 - 0.50", "0.50 - 0.75", "0.75 - 1.00",
+             "1.00 - 1.25", "1.25 - 1.50", "1.50 - 1.75", "1.75 - 2.00",
+             "2.00 - 2.25", "2.25 - 2.50", "2.50+"),
+  right = FALSE, include.lowest = TRUE)
+
+dist_colors <- c(
+  "0 - 0.25"    = "#313695",
+  "0.25 - 0.50" = "#4575b4",
+  "0.50 - 0.75" = "#74add1",
+  "0.75 - 1.00" = "#abd9e9",
+  "1.00 - 1.25" = "#e0f3f8",
+  "1.25 - 1.50" = "#fee090",
+  "1.50 - 1.75" = "#fdae61",
+  "1.75 - 2.00" = "#f46d43",
+  "2.00 - 2.25" = "#d73027",
+  "2.25 - 2.50" = "#a50026",
+  "2.50+"        = "#67001f"
+)
+
+my_plot_dist <- ggplot() +
+  geom_polygon(data = ct_map, aes(x = long, y = lat, group = group), fill = "white", color = "black") +
+  geom_rect(data = my_ct_data, aes(xmin = long-delta, xmax = long+delta, ymin = lat-delta, ymax = lat+delta, fill = dist_bin)) +
+  geom_polygon(data = ct_counties, aes(x = long, y = lat, group = group), fill=NA, color = "black") +
+  geom_sf(data = ct_boundary$osm_lines, inherit.aes = TRUE, fill=NA, color = "black", size = 0.1) +
+  scale_fill_manual(values = dist_colors, name = "Distance (miles)", drop = FALSE) +
+  coord_fixed(ratio = 1.4) +
+  theme_minimal() +
+  labs(title = "Andy Walks Connecticut - Distance from Nearest Walk")
+ggsave("Distance_Heatmap.png", my_plot_dist, width = 15, height = 15)
 
