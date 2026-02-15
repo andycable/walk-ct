@@ -5,23 +5,17 @@
 # install.packages("sp")
 
 library(ggplot2)
-library(maps)
 library(ggmap)
 library(dplyr)
-library(sp)
-library(osmdata)
+library(sf)
+library(tigris)
 
+options(tigris_use_cache = TRUE)
 
-# Get Connecticut map data
-ct_map <- map_data("state", region = "connecticut")
-ct_counties <- map_data("county", region = "connecticut")
-
-# Fetch town borders (admin_level=8 in OSM = towns/cities in CT)
-ct_towns <- getbb("Connecticut") %>%
-  opq(timeout = 120) %>%
-  add_osm_feature(key = "boundary", value = "administrative") %>%
-  add_osm_feature(key = "admin_level", value = "8") %>%
-  osmdata_sf()
+# Fetch all boundaries from US Census TIGER/Line for consistency
+ct_state <- states(cb = TRUE) %>% filter(STUSPS == "CT")
+ct_counties <- counties(state = "CT", cb = TRUE)
+ct_towns <- county_subdivisions(state = "CT", cb = TRUE)
 
 
 # Connecticut bounding box for clipping
@@ -57,19 +51,17 @@ largest_unwalked <- my_data$Dist > 1.0 &
   my_data$lat >= 41.7005 & my_data$lat <= 42.0505
 my_data$color2_highlight[largest_unwalked] <- "largest_unwalked"
 
-ct_boundary_coordinates <- ct_map %>% select(long, lat)
-
-ct_polygon <- SpatialPolygons(list(Polygons(list(Polygon(ct_boundary_coordinates)), ID = "CT")))
-
-is_inside <- (point.in.polygon(my_data$long, my_data$lat, ct_map$long, ct_map$lat) != 0)
-
-my_ct_data <- filter(my_data, is_inside)
+# Filter points to those inside CT using the TIGER state boundary
+my_points <- st_as_sf(my_data, coords = c("long", "lat"), crs = 4326)
+ct_state_4326 <- st_transform(ct_state, crs = 4326)
+is_inside <- st_within(my_points, st_union(ct_state_4326), sparse = FALSE)[, 1]
+my_ct_data <- my_data[is_inside, ]
 
 my_plot <- ggplot() +
-  geom_polygon(data = ct_map, aes(x = long, y = lat, group = group), fill = "white", color = "black") +
+  geom_sf(data = ct_state, fill = "white", color = "black") +
   geom_rect(data = my_ct_data, aes(xmin = long-delta, xmax = long+delta, ymin = lat-delta, ymax = lat+delta, fill = colorx)) +
-  geom_polygon(data = ct_counties, aes(x = long, y = lat, group = group), fill=NA, color = "black") +
-  geom_sf(data = ct_towns$osm_multipolygons, inherit.aes = TRUE, fill = NA, color = "gray40", size = 0.2) +
+  geom_sf(data = ct_counties, fill = NA, color = "black", linewidth = 0.4) +
+  geom_sf(data = ct_towns, fill = NA, color = "gray40", linewidth = 0.2) +
   scale_size_continuous(range = c(3, 5)) + # Adjust the size range as needed
   coord_sf(xlim = ct_xlim, ylim = ct_ylim) +
   theme_minimal() +
@@ -78,10 +70,10 @@ my_plot <- ggplot() +
   labs(title = "Andy Walks Connecticut")
 
 my_plot2 <- ggplot() +
-  geom_polygon(data = ct_map, aes(x = long, y = lat, group = group), fill = "white", color = "black") +
+  geom_sf(data = ct_state, fill = "white", color = "black") +
   geom_rect(data = my_ct_data, aes(xmin = long-delta, xmax = long+delta, ymin = lat-delta, ymax = lat+delta, fill = color2)) +
-  geom_polygon(data = ct_counties, aes(x = long, y = lat, group = group), fill=NA, color = "black") +
-  geom_sf(data = ct_towns$osm_multipolygons, inherit.aes = TRUE, fill = NA, color = "gray40", size = 0.2) +
+  geom_sf(data = ct_counties, fill = NA, color = "black", linewidth = 0.4) +
+  geom_sf(data = ct_towns, fill = NA, color = "gray40", linewidth = 0.2) +
   scale_size_continuous(range = c(3, 5)) + # Adjust the size range as needed
   coord_sf(xlim = ct_xlim, ylim = ct_ylim) +
   theme_minimal() +
@@ -95,10 +87,10 @@ ggsave("Rivers.png", my_plot2, width = 15, height = 15)
 
 # NW zoom with largest unwalked area highlighted in yellow
 my_plot_nw <- ggplot() +
-  geom_polygon(data = ct_map, aes(x = long, y = lat, group = group), fill = "white", color = "black") +
+  geom_sf(data = ct_state, fill = "white", color = "black") +
   geom_rect(data = my_ct_data, aes(xmin = long-delta, xmax = long+delta, ymin = lat-delta, ymax = lat+delta, fill = color2_highlight)) +
-  geom_polygon(data = ct_counties, aes(x = long, y = lat, group = group), fill=NA, color = "black") +
-  geom_sf(data = ct_towns$osm_multipolygons, inherit.aes = TRUE, fill = NA, color = "gray40", size = 0.2) +
+  geom_sf(data = ct_counties, fill = NA, color = "black", linewidth = 0.4) +
+  geom_sf(data = ct_towns, fill = NA, color = "gray40", linewidth = 0.2) +
   scale_fill_manual(values = c("under 0.0" = "#F8766D", "under 0.2" = "#F8766D", "under 0.4" = "#B79F00", "under 0.6" = "#00BA38", "zboundary" = "#619CFF", "largest_unwalked" = "yellow")) +
   coord_sf(xlim = c(-73.73, -73.2), ylim = c(41.7, 42.05)) +
   theme_minimal() +
@@ -130,10 +122,10 @@ dist_colors <- c(
 )
 
 my_plot_dist <- ggplot() +
-  geom_polygon(data = ct_map, aes(x = long, y = lat, group = group), fill = "white", color = "black") +
+  geom_sf(data = ct_state, fill = "white", color = "black") +
   geom_rect(data = my_ct_data, aes(xmin = long-delta, xmax = long+delta, ymin = lat-delta, ymax = lat+delta, fill = dist_bin)) +
-  geom_polygon(data = ct_counties, aes(x = long, y = lat, group = group), fill=NA, color = "black") +
-  geom_sf(data = ct_towns$osm_multipolygons, inherit.aes = TRUE, fill = NA, color = "gray40", size = 0.2) +
+  geom_sf(data = ct_counties, fill = NA, color = "black", linewidth = 0.4) +
+  geom_sf(data = ct_towns, fill = NA, color = "gray40", linewidth = 0.2) +
   scale_fill_manual(values = dist_colors, name = "Distance (miles)", drop = FALSE) +
   coord_sf(xlim = ct_xlim, ylim = ct_ylim) +
   theme_minimal() +
