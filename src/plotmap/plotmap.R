@@ -16,8 +16,17 @@ library(osmdata)
 ct_map <- map_data("state", region = "connecticut")
 ct_counties <- map_data("county", region = "connecticut")
 
-ct_boundary <- getbb("Connecticut") %>% opq() %>% add_osm_feature(key = "boundary", value = "administrative")# %>% osmdata_sf()
+# Fetch town borders (admin_level=8 in OSM = towns/cities in CT)
+ct_towns <- getbb("Connecticut") %>%
+  opq(timeout = 120) %>%
+  add_osm_feature(key = "boundary", value = "administrative") %>%
+  add_osm_feature(key = "admin_level", value = "8") %>%
+  osmdata_sf()
 
+
+# Connecticut bounding box for clipping
+ct_xlim <- c(-73.73, -71.77)
+ct_ylim <- c(41.00, 42.06)
 
 file_path <- "Distance_3_ct.csv"
 delta = 0.0005
@@ -60,20 +69,24 @@ my_plot <- ggplot() +
   geom_polygon(data = ct_map, aes(x = long, y = lat, group = group), fill = "white", color = "black") +
   geom_rect(data = my_ct_data, aes(xmin = long-delta, xmax = long+delta, ymin = lat-delta, ymax = lat+delta, fill = colorx)) +
   geom_polygon(data = ct_counties, aes(x = long, y = lat, group = group), fill=NA, color = "black") +
-  geom_sf(data = ct_boundary$osm_lines, inherit.aes = TRUE, fill=NA, color = "black", size = 0.1) +
+  geom_sf(data = ct_towns$osm_multipolygons, inherit.aes = TRUE, fill = NA, color = "gray40", size = 0.2) +
   scale_size_continuous(range = c(3, 5)) + # Adjust the size range as needed
-  coord_fixed(ratio = 1.4) + # Ensure aspect ratio is correct
+  coord_sf(xlim = ct_xlim, ylim = ct_ylim) +
   theme_minimal() +
+  theme(panel.background = element_rect(fill = "white", color = NA),
+        plot.background = element_rect(fill = "white", color = NA)) +
   labs(title = "Andy Walks Connecticut")
 
 my_plot2 <- ggplot() +
   geom_polygon(data = ct_map, aes(x = long, y = lat, group = group), fill = "white", color = "black") +
   geom_rect(data = my_ct_data, aes(xmin = long-delta, xmax = long+delta, ymin = lat-delta, ymax = lat+delta, fill = color2)) +
   geom_polygon(data = ct_counties, aes(x = long, y = lat, group = group), fill=NA, color = "black") +
-  geom_sf(data = ct_boundary$osm_lines, inherit.aes = TRUE, fill=NA, color = "black", size = 0.1) +
+  geom_sf(data = ct_towns$osm_multipolygons, inherit.aes = TRUE, fill = NA, color = "gray40", size = 0.2) +
   scale_size_continuous(range = c(3, 5)) + # Adjust the size range as needed
-  coord_fixed(ratio = 1.4) + # Ensure aspect ratio is correct
+  coord_sf(xlim = ct_xlim, ylim = ct_ylim) +
   theme_minimal() +
+  theme(panel.background = element_rect(fill = "white", color = NA),
+        plot.background = element_rect(fill = "white", color = NA)) +
   labs(title = "Andy Walks Connecticut")
 
 # Save the ggplot as a PNG file
@@ -85,10 +98,12 @@ my_plot_nw <- ggplot() +
   geom_polygon(data = ct_map, aes(x = long, y = lat, group = group), fill = "white", color = "black") +
   geom_rect(data = my_ct_data, aes(xmin = long-delta, xmax = long+delta, ymin = lat-delta, ymax = lat+delta, fill = color2_highlight)) +
   geom_polygon(data = ct_counties, aes(x = long, y = lat, group = group), fill=NA, color = "black") +
-  geom_sf(data = ct_boundary$osm_lines, inherit.aes = TRUE, fill=NA, color = "black", size = 0.1) +
+  geom_sf(data = ct_towns$osm_multipolygons, inherit.aes = TRUE, fill = NA, color = "gray40", size = 0.2) +
   scale_fill_manual(values = c("under 0.0" = "#F8766D", "under 0.2" = "#F8766D", "under 0.4" = "#B79F00", "under 0.6" = "#00BA38", "zboundary" = "#619CFF", "largest_unwalked" = "yellow")) +
-  coord_fixed(ratio = 1.4, xlim = c(-73.73, -73.2), ylim = c(41.7, 42.05)) +
+  coord_sf(xlim = c(-73.73, -73.2), ylim = c(41.7, 42.05)) +
   theme_minimal() +
+  theme(panel.background = element_rect(fill = "white", color = NA),
+        plot.background = element_rect(fill = "white", color = NA)) +
   labs(title = "NW Connecticut - Largest Unwalked Area Highlighted")
 ggsave("Rivers_NW_zoom_highlight.png", my_plot_nw, width = 15, height = 15)
 
@@ -118,10 +133,12 @@ my_plot_dist <- ggplot() +
   geom_polygon(data = ct_map, aes(x = long, y = lat, group = group), fill = "white", color = "black") +
   geom_rect(data = my_ct_data, aes(xmin = long-delta, xmax = long+delta, ymin = lat-delta, ymax = lat+delta, fill = dist_bin)) +
   geom_polygon(data = ct_counties, aes(x = long, y = lat, group = group), fill=NA, color = "black") +
-  geom_sf(data = ct_boundary$osm_lines, inherit.aes = TRUE, fill=NA, color = "black", size = 0.1) +
+  geom_sf(data = ct_towns$osm_multipolygons, inherit.aes = TRUE, fill = NA, color = "gray40", size = 0.2) +
   scale_fill_manual(values = dist_colors, name = "Distance (miles)", drop = FALSE) +
-  coord_fixed(ratio = 1.4) +
+  coord_sf(xlim = ct_xlim, ylim = ct_ylim) +
   theme_minimal() +
+  theme(panel.background = element_rect(fill = "white", color = NA),
+        plot.background = element_rect(fill = "white", color = NA)) +
   labs(title = "Andy Walks Connecticut - Distance from Nearest Walk")
 ggsave("Distance_Heatmap.png", my_plot_dist, width = 15, height = 15)
 
