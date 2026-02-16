@@ -1,0 +1,459 @@
+"Town1","Town2","crossed"
+"Andover","Bolton",TRUE
+"Andover","Columbia",TRUE
+"Andover","Coventry",TRUE
+"Andover","Hebron",TRUE
+"Ansonia","Derby",TRUE
+"Ansonia","Seymour",TRUE
+"Ansonia","Woodbridge",TRUE
+"Ashford","Chaplin",TRUE
+"Ashford","Eastford",TRUE
+"Ashford","Mansfield",TRUE
+"Ashford","Union",TRUE
+"Ashford","Willington",TRUE
+"Avon","Bloomfield",TRUE
+"Avon","Burlington",TRUE
+"Avon","Canton",TRUE
+"Avon","Farmington",TRUE
+"Avon","Simsbury",TRUE
+"Avon","West Hartford",TRUE
+"Barkhamsted","Canton",TRUE
+"Barkhamsted","Colebrook",TRUE
+"Barkhamsted","Granby",TRUE
+"Barkhamsted","Hartland",TRUE
+"Barkhamsted","New Hartford",TRUE
+"Barkhamsted","Torrington",FALSE
+"Barkhamsted","Winchester",TRUE
+"Beacon Falls","Bethany",TRUE
+"Beacon Falls","Naugatuck",TRUE
+"Beacon Falls","Oxford",TRUE
+"Beacon Falls","Seymour",TRUE
+"Berlin","Cromwell",TRUE
+"Berlin","Meriden",TRUE
+"Berlin","Middletown",TRUE
+"Berlin","New Britain",TRUE
+"Berlin","Newington",FALSE
+"Berlin","Rocky Hill",TRUE
+"Berlin","Southington",TRUE
+"Bethany","Cheshire",FALSE
+"Bethany","Hamden",TRUE
+"Bethany","Naugatuck",FALSE
+"Bethany","Prospect",TRUE
+"Bethany","Seymour",TRUE
+"Bethany","Woodbridge",TRUE
+"Bethel","Brookfield",TRUE
+"Bethel","Danbury",TRUE
+"Bethel","Newtown",TRUE
+"Bethel","Redding",TRUE
+"Bethlehem","Morris",TRUE
+"Bethlehem","Washington",TRUE
+"Bethlehem","Watertown",TRUE
+"Bethlehem","Woodbury",TRUE
+"Bloomfield","East Granby",TRUE
+"Bloomfield","Hartford",TRUE
+"Bloomfield","Simsbury",TRUE
+"Bloomfield","West Hartford",TRUE
+"Bloomfield","Windsor",TRUE
+"Bolton","Coventry",TRUE
+"Bolton","Glastonbury",FALSE
+"Bolton","Hebron",TRUE
+"Bolton","Manchester",TRUE
+"Bolton","Vernon",TRUE
+"Bozrah","Colchester",FALSE
+"Bozrah","Franklin",TRUE
+"Bozrah","Lebanon",TRUE
+"Bozrah","Montville",TRUE
+"Bozrah","Norwich",TRUE
+"Bozrah","Salem",FALSE
+"Branford","East Haven",TRUE
+"Branford","Guilford",TRUE
+"Branford","North Branford",TRUE
+"Bridgeport","Fairfield",TRUE
+"Bridgeport","Stratford",TRUE
+"Bridgeport","Trumbull",TRUE
+"Bridgewater","Brookfield",TRUE
+"Bridgewater","New Milford",TRUE
+"Bridgewater","Newtown",FALSE
+"Bridgewater","Roxbury",TRUE
+"Bridgewater","Southbury",FALSE
+"Bristol","Burlington",TRUE
+"Bristol","Farmington",FALSE
+"Bristol","Plainville",TRUE
+"Bristol","Plymouth",TRUE
+"Bristol","Southington",TRUE
+"Bristol","Wolcott",TRUE
+"Brookfield","Danbury",TRUE
+"Brookfield","New Fairfield",FALSE
+"Brookfield","New Milford",TRUE
+"Brookfield","Newtown",TRUE
+"Brooklyn","Canterbury",TRUE
+"Brooklyn","Hampton",FALSE
+"Brooklyn","Killingly",TRUE
+"Brooklyn","Plainfield",FALSE
+"Brooklyn","Pomfret",TRUE
+"Burlington","Canton",TRUE
+"Burlington","Farmington",TRUE
+"Burlington","Harwinton",TRUE
+"Burlington","New Hartford",TRUE
+"Burlington","Plymouth",FALSE
+"Canaan","Cornwall",TRUE
+"Canaan","Goshen",FALSE
+"Canaan","Norfolk",TRUE
+"Canaan","North Canaan",TRUE
+"Canaan","Salisbury",TRUE
+"Canaan","Sharon",FALSE
+"Canterbury","Griswold",TRUE
+"Canterbury","Hampton",TRUE
+"Canterbury","Lisbon",TRUE
+"Canterbury","Plainfield",TRUE
+"Canterbury","Scotland",TRUE
+"Canterbury","Sprague",TRUE
+"Canton","Granby",TRUE
+"Canton","New Hartford",TRUE
+"Canton","Simsbury",TRUE
+"Chaplin","Eastford",TRUE
+"Chaplin","Hampton",TRUE
+"Chaplin","Mansfield",TRUE
+"Chaplin","Scotland",FALSE
+"Chaplin","Windham",TRUE
+"Cheshire","Hamden",TRUE
+"Cheshire","Meriden",TRUE
+"Cheshire","Prospect",TRUE
+"Cheshire","Southington",TRUE
+"Cheshire","Wallingford",TRUE
+"Cheshire","Waterbury",FALSE
+"Cheshire","Wolcott",FALSE
+"Chester","Deep River",TRUE
+"Chester","East Haddam",FALSE
+"Chester","Haddam",TRUE
+"Chester","Killingworth",TRUE
+"Chester","Lyme",FALSE
+"Clinton","Killingworth",TRUE
+"Clinton","Madison",TRUE
+"Clinton","Westbrook",TRUE
+"Colchester","East Haddam",TRUE
+"Colchester","East Hampton",TRUE
+"Colchester","Hebron",TRUE
+"Colchester","Lebanon",TRUE
+"Colchester","Marlborough",TRUE
+"Colchester","Salem",TRUE
+"Colebrook","Hartland",TRUE
+"Colebrook","Norfolk",TRUE
+"Colebrook","Winchester",TRUE
+"Columbia","Coventry",TRUE
+"Columbia","Hebron",TRUE
+"Columbia","Lebanon",TRUE
+"Columbia","Windham",TRUE
+"Cornwall","Goshen",TRUE
+"Cornwall","Kent",TRUE
+"Cornwall","Norfolk",FALSE
+"Cornwall","Salisbury",FALSE
+"Cornwall","Sharon",TRUE
+"Cornwall","Warren",TRUE
+"Coventry","Mansfield",TRUE
+"Coventry","Tolland",TRUE
+"Coventry","Vernon",FALSE
+"Coventry","Willington",TRUE
+"Coventry","Windham",TRUE
+"Cromwell","Glastonbury",FALSE
+"Cromwell","Middletown",TRUE
+"Cromwell","Portland",TRUE
+"Cromwell","Rocky Hill",TRUE
+"Danbury","New Fairfield",TRUE
+"Danbury","Redding",TRUE
+"Danbury","Ridgefield",TRUE
+"Darien","New Canaan",TRUE
+"Darien","Norwalk",TRUE
+"Darien","Stamford",TRUE
+"Deep River","Essex",TRUE
+"Deep River","Killingworth",TRUE
+"Deep River","Lyme",TRUE
+"Deep River","Westbrook",TRUE
+"Derby","Orange",TRUE
+"Derby","Seymour",TRUE
+"Derby","Shelton",TRUE
+"Derby","Woodbridge",FALSE
+"Durham","Guilford",TRUE
+"Durham","Haddam",TRUE
+"Durham","Killingworth",TRUE
+"Durham","Madison",TRUE
+"Durham","Middlefield",TRUE
+"Durham","Middletown",TRUE
+"Durham","North Branford",TRUE
+"Durham","Wallingford",TRUE
+"East Granby","Granby",TRUE
+"East Granby","Simsbury",TRUE
+"East Granby","Suffield",TRUE
+"East Granby","Windsor",TRUE
+"East Granby","Windsor Locks",FALSE
+"East Haddam","East Hampton",TRUE
+"East Haddam","Haddam",TRUE
+"East Haddam","Lyme",TRUE
+"East Haddam","Salem",TRUE
+"East Hampton","Glastonbury",FALSE
+"East Hampton","Haddam",TRUE
+"East Hampton","Marlborough",TRUE
+"East Hampton","Middletown",FALSE
+"East Hampton","Portland",TRUE
+"East Hartford","Glastonbury",TRUE
+"East Hartford","Hartford",TRUE
+"East Hartford","Manchester",TRUE
+"East Hartford","South Windsor",TRUE
+"East Hartford","Wethersfield",FALSE
+"East Haven","New Haven",TRUE
+"East Haven","North Branford",TRUE
+"East Haven","North Haven",TRUE
+"East Lyme","Lyme",TRUE
+"East Lyme","Montville",TRUE
+"East Lyme","Old Lyme",TRUE
+"East Lyme","Salem",TRUE
+"East Lyme","Waterford",TRUE
+"East Windsor","Ellington",TRUE
+"East Windsor","Enfield",TRUE
+"East Windsor","South Windsor",TRUE
+"East Windsor","Windsor",FALSE
+"East Windsor","Windsor Locks",TRUE
+"Eastford","Hampton",TRUE
+"Eastford","Pomfret",TRUE
+"Eastford","Union",TRUE
+"Eastford","Woodstock",TRUE
+"Easton","Fairfield",TRUE
+"Easton","Monroe",TRUE
+"Easton","Newtown",TRUE
+"Easton","Redding",TRUE
+"Easton","Trumbull",TRUE
+"Easton","Weston",TRUE
+"Ellington","Enfield",TRUE
+"Ellington","Somers",TRUE
+"Ellington","South Windsor",FALSE
+"Ellington","Stafford",TRUE
+"Ellington","Tolland",TRUE
+"Ellington","Vernon",TRUE
+"Ellington","Willington",TRUE
+"Enfield","Somers",TRUE
+"Enfield","Suffield",TRUE
+"Enfield","Windsor Locks",FALSE
+"Essex","Lyme",TRUE
+"Essex","Old Lyme",FALSE
+"Essex","Old Saybrook",TRUE
+"Essex","Westbrook",TRUE
+"Fairfield","Trumbull",TRUE
+"Fairfield","Weston",TRUE
+"Fairfield","Westport",TRUE
+"Farmington","New Britain",TRUE
+"Farmington","Newington",FALSE
+"Farmington","Plainville",TRUE
+"Farmington","West Hartford",TRUE
+"Franklin","Lebanon",TRUE
+"Franklin","Norwich",TRUE
+"Franklin","Scotland",FALSE
+"Franklin","Sprague",TRUE
+"Franklin","Windham",TRUE
+"Glastonbury","Hebron",TRUE
+"Glastonbury","Manchester",FALSE
+"Glastonbury","Marlborough",TRUE
+"Glastonbury","Portland",TRUE
+"Glastonbury","Rocky Hill",TRUE
+"Glastonbury","Wethersfield",TRUE
+"Goshen","Litchfield",TRUE
+"Goshen","Norfolk",TRUE
+"Goshen","Torrington",TRUE
+"Goshen","Warren",TRUE
+"Goshen","Winchester",TRUE
+"Granby","Hartland",TRUE
+"Granby","Simsbury",TRUE
+"Granby","Suffield",TRUE
+"Greenwich","Stamford",TRUE
+"Griswold","Lisbon",TRUE
+"Griswold","North Stonington",TRUE
+"Griswold","Plainfield",TRUE
+"Griswold","Preston",TRUE
+"Griswold","Voluntown",TRUE
+"Groton","Ledyard",TRUE
+"Groton","New London",TRUE
+"Groton","Stonington",TRUE
+"Groton","Waterford",FALSE
+"Guilford","Madison",TRUE
+"Guilford","North Branford",TRUE
+"Haddam","Killingworth",TRUE
+"Haddam","Middletown",TRUE
+"Hamden","New Haven",TRUE
+"Hamden","North Haven",TRUE
+"Hamden","Wallingford",TRUE
+"Hamden","Woodbridge",TRUE
+"Hampton","Pomfret",TRUE
+"Hampton","Scotland",TRUE
+"Hartford","Newington",FALSE
+"Hartford","South Windsor",FALSE
+"Hartford","West Hartford",TRUE
+"Hartford","Wethersfield",TRUE
+"Hartford","Windsor",TRUE
+"Harwinton","Litchfield",TRUE
+"Harwinton","New Hartford",TRUE
+"Harwinton","Plymouth",TRUE
+"Harwinton","Thomaston",TRUE
+"Harwinton","Torrington",TRUE
+"Hebron","Lebanon",TRUE
+"Hebron","Marlborough",TRUE
+"Kent","New Milford",TRUE
+"Kent","Sharon",TRUE
+"Kent","Sherman",TRUE
+"Kent","Warren",TRUE
+"Kent","Washington",TRUE
+"Killingly","Plainfield",TRUE
+"Killingly","Pomfret",TRUE
+"Killingly","Putnam",TRUE
+"Killingly","Sterling",TRUE
+"Killingworth","Madison",TRUE
+"Killingworth","Westbrook",FALSE
+"Lebanon","Salem",FALSE
+"Lebanon","Windham",TRUE
+"Ledyard","Montville",TRUE
+"Ledyard","North Stonington",TRUE
+"Ledyard","Preston",TRUE
+"Ledyard","Stonington",FALSE
+"Ledyard","Waterford",FALSE
+"Lisbon","Norwich",TRUE
+"Lisbon","Preston",FALSE
+"Lisbon","Sprague",TRUE
+"Litchfield","Morris",TRUE
+"Litchfield","Thomaston",TRUE
+"Litchfield","Torrington",TRUE
+"Litchfield","Warren",TRUE
+"Litchfield","Washington",FALSE
+"Lyme","Old Lyme",TRUE
+"Lyme","Old Saybrook",FALSE
+"Lyme","Salem",TRUE
+"Manchester","South Windsor",TRUE
+"Manchester","Vernon",TRUE
+"Mansfield","Willington",TRUE
+"Mansfield","Windham",TRUE
+"Meriden","Middlefield",TRUE
+"Meriden","Middletown",TRUE
+"Meriden","Southington",TRUE
+"Meriden","Wallingford",TRUE
+"Middlebury","Naugatuck",TRUE
+"Middlebury","Oxford",TRUE
+"Middlebury","Southbury",TRUE
+"Middlebury","Waterbury",TRUE
+"Middlebury","Watertown",TRUE
+"Middlebury","Woodbury",TRUE
+"Middlefield","Middletown",TRUE
+"Middlefield","Wallingford",TRUE
+"Middletown","Portland",TRUE
+"Milford","Orange",TRUE
+"Milford","Shelton",FALSE
+"Milford","Stratford",TRUE
+"Milford","West Haven",TRUE
+"Monroe","Newtown",TRUE
+"Monroe","Oxford",TRUE
+"Monroe","Shelton",TRUE
+"Monroe","Trumbull",TRUE
+"Montville","Norwich",TRUE
+"Montville","Preston",TRUE
+"Montville","Salem",TRUE
+"Montville","Waterford",TRUE
+"Morris","Thomaston",TRUE
+"Morris","Washington",TRUE
+"Morris","Watertown",TRUE
+"Naugatuck","Oxford",TRUE
+"Naugatuck","Prospect",TRUE
+"Naugatuck","Waterbury",TRUE
+"New Britain","Newington",TRUE
+"New Britain","Plainville",TRUE
+"New Britain","Southington",TRUE
+"New Canaan","Norwalk",TRUE
+"New Canaan","Stamford",TRUE
+"New Canaan","Wilton",TRUE
+"New Fairfield","New Milford",FALSE
+"New Fairfield","Sherman",TRUE
+"New Hartford","Torrington",TRUE
+"New Hartford","Winchester",FALSE
+"New Haven","North Haven",TRUE
+"New Haven","Orange",FALSE
+"New Haven","West Haven",TRUE
+"New Haven","Woodbridge",TRUE
+"New London","Waterford",TRUE
+"New Milford","Roxbury",FALSE
+"New Milford","Sherman",TRUE
+"New Milford","Washington",TRUE
+"Newington","Rocky Hill",FALSE
+"Newington","West Hartford",TRUE
+"Newington","Wethersfield",FALSE
+"Newtown","Oxford",TRUE
+"Newtown","Redding",TRUE
+"Newtown","Southbury",TRUE
+"Norfolk","North Canaan",TRUE
+"Norfolk","Winchester",TRUE
+"North Branford","North Haven",FALSE
+"North Branford","Wallingford",TRUE
+"North Canaan","Salisbury",FALSE
+"North Haven","Wallingford",TRUE
+"North Stonington","Preston",TRUE
+"North Stonington","Stonington",TRUE
+"North Stonington","Voluntown",TRUE
+"Norwalk","Westport",TRUE
+"Norwalk","Wilton",TRUE
+"Norwich","Preston",TRUE
+"Norwich","Sprague",TRUE
+"Old Lyme","Old Saybrook",TRUE
+"Old Saybrook","Westbrook",TRUE
+"Orange","Shelton",TRUE
+"Orange","West Haven",TRUE
+"Orange","Woodbridge",TRUE
+"Oxford","Seymour",TRUE
+"Oxford","Shelton",FALSE
+"Oxford","Southbury",TRUE
+"Plainfield","Sterling",TRUE
+"Plainfield","Voluntown",FALSE
+"Plainville","Southington",TRUE
+"Plymouth","Thomaston",TRUE
+"Plymouth","Waterbury",FALSE
+"Plymouth","Wolcott",FALSE
+"Pomfret","Putnam",TRUE
+"Pomfret","Woodstock",TRUE
+"Prospect","Waterbury",TRUE
+"Putnam","Thompson",TRUE
+"Putnam","Woodstock",TRUE
+"Redding","Ridgefield",TRUE
+"Redding","Weston",TRUE
+"Redding","Wilton",TRUE
+"Ridgefield","Wilton",TRUE
+"Rocky Hill","Wethersfield",TRUE
+"Roxbury","Southbury",TRUE
+"Roxbury","Washington",TRUE
+"Roxbury","Woodbury",TRUE
+"Salisbury","Sharon",TRUE
+"Scotland","Sprague",TRUE
+"Scotland","Windham",TRUE
+"Seymour","Shelton",TRUE
+"Seymour","Woodbridge",TRUE
+"Shelton","Stratford",TRUE
+"Shelton","Trumbull",TRUE
+"Somers","Stafford",TRUE
+"South Windsor","Vernon",FALSE
+"South Windsor","Windsor",TRUE
+"Southbury","Woodbury",TRUE
+"Southington","Wolcott",TRUE
+"Stafford","Union",TRUE
+"Stafford","Willington",TRUE
+"Sterling","Voluntown",TRUE
+"Stratford","Trumbull",TRUE
+"Suffield","Windsor Locks",FALSE
+"Thomaston","Waterbury",FALSE
+"Thomaston","Watertown",TRUE
+"Thompson","Woodstock",TRUE
+"Tolland","Vernon",TRUE
+"Tolland","Willington",TRUE
+"Torrington","Winchester",TRUE
+"Union","Willington",TRUE
+"Union","Woodstock",TRUE
+"Warren","Washington",TRUE
+"Washington","Woodbury",FALSE
+"Waterbury","Watertown",TRUE
+"Waterbury","Wolcott",TRUE
+"Watertown","Woodbury",TRUE
+"Weston","Westport",TRUE
+"Weston","Wilton",TRUE
+"Westport","Wilton",TRUE
+"Windsor","Windsor Locks",TRUE

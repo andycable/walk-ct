@@ -22,7 +22,99 @@ ct_towns <- county_subdivisions(state = "CT", cb = TRUE)
 ct_xlim <- c(-73.73, -71.77)
 ct_ylim <- c(41.00, 42.06)
 
-file_path <- "Distance_3_ct.csv"
+# --- Classify shared town borders as walked/unwalked per edge ---
+# Compute shared boundary geometries once and cache as RDS
+boundary_geoms_file <- "town_boundary_geoms.rds"
+if (file.exists(boundary_geoms_file)) {
+  boundary_geoms <- readRDS(boundary_geoms_file)
+} else {
+  ct_towns_ll <- st_transform(ct_towns, 4326)
+  sf_use_s2(FALSE)  # s2 returns empty for polygon-polygon intersection
+  adj <- st_touches(ct_towns_ll, sparse = TRUE)
+  boundary_geoms <- list()
+  for (i in seq_len(nrow(ct_towns_ll))) {
+    for (j in adj[[i]]) {
+      if (j <= i) next
+      t1 <- ct_towns_ll$NAME[i]; t2 <- ct_towns_ll$NAME[j]
+      if (t1 > t2) { tmp <- t1; t1 <- t2; t2 <- tmp }
+      shared <- tryCatch(
+        st_intersection(st_geometry(ct_towns_ll)[i], st_geometry(ct_towns_ll)[j]),
+        error = function(e) NULL)
+      if (is.null(shared) || length(shared) == 0 || all(st_is_empty(shared))) next
+      lines <- tryCatch(st_collection_extract(shared, "LINESTRING"), error = function(e) shared)
+      if (length(lines) == 0 || all(st_is_empty(lines)) || !any(grepl("LINE", st_geometry_type(lines)))) next
+      boundary_geoms[[paste(t1, t2, sep = "|")]] <- lines
+    }
+  }
+  saveRDS(boundary_geoms, boundary_geoms_file)
+  sf_use_s2(TRUE)
+}
+
+# Load walked coordinates and filter to CT bounding box
+walked_pts <- read.csv("../all.3.uniq.csv")
+walked_pts$lat <- as.numeric(walked_pts$lat)
+walked_pts <- walked_pts %>%
+  filter(!is.na(lat), lat >= ct_ylim[1], lat <= ct_ylim[2],
+         long >= ct_xlim[1], long <= ct_xlim[2])
+
+# Town polygons in WGS84 for point-in-polygon checks
+ct_towns_ll <- st_transform(ct_towns, 4326)
+
+# Load existing boundary CSV and add crossed column if missing
+bounds <- read.csv("town_boundaries.csv")
+if (!"crossed" %in% names(bounds)) bounds$crossed <- FALSE
+
+# Only check boundaries not yet marked as crossed
+# A boundary is "crossed" if walked points exist in BOTH towns near the shared border
+pad <- 0.005  # ~500m padding around boundary bbox
+for (r in which(!bounds$crossed)) {
+  key <- paste(bounds$Town1[r], bounds$Town2[r], sep = "|")
+  geom <- boundary_geoms[[key]]
+  if (is.null(geom)) next
+
+  # Filter walked points within the boundary's expanded bounding box
+  bb <- st_bbox(geom)
+  nearby <- walked_pts %>%
+    filter(lat >= bb["ymin"] - pad, lat <= bb["ymax"] + pad,
+           long >= bb["xmin"] - pad, long <= bb["xmax"] + pad)
+  if (nrow(nearby) == 0) next
+
+  # Check if walked points exist in both towns
+  nearby_sf <- st_as_sf(nearby, coords = c("long", "lat"), crs = 4326)
+  town1_poly <- ct_towns_ll[ct_towns_ll$NAME == bounds$Town1[r], ]
+  town2_poly <- ct_towns_ll[ct_towns_ll$NAME == bounds$Town2[r], ]
+  in_town1 <- any(st_intersects(nearby_sf, town1_poly, sparse = FALSE))
+  in_town2 <- any(st_intersects(nearby_sf, town2_poly, sparse = FALSE))
+  bounds$crossed[r] <- in_town1 && in_town2
+}
+
+# Save updated CSV
+write.csv(bounds, "town_boundaries.csv", row.names = FALSE)
+cat("Boundaries crossed:", sum(bounds$crossed), "of", nrow(bounds), "\n")
+
+# Build walked/unwalked border geometry lists for plotting
+walked_edge_list <- list()
+unwalked_edge_list <- list()
+for (r in seq_len(nrow(bounds))) {
+  key <- paste(bounds$Town1[r], bounds$Town2[r], sep = "|")
+  geom <- boundary_geoms[[key]]
+  if (is.null(geom)) next
+  if (bounds$crossed[r]) walked_edge_list[[length(walked_edge_list) + 1]] <- geom
+  else unwalked_edge_list[[length(unwalked_edge_list) + 1]] <- geom
+}
+
+walked_borders <- st_sfc(do.call(c, walked_edge_list), crs = 4326)
+if (length(unwalked_edge_list) > 0) {
+  unwalked_borders <- st_sfc(do.call(c, unwalked_edge_list), crs = 4326)
+} else {
+  unwalked_borders <- st_sfc(crs = 4326)
+}
+
+# Town name labels at centroids
+town_labels <- ct_towns_ll
+town_labels$geometry <- st_point_on_surface(st_geometry(town_labels))
+
+file_path <- "Distance_3.csv"
 delta = 0.0005
 
 
@@ -60,8 +152,9 @@ my_ct_data <- my_data[is_inside, ]
 my_plot <- ggplot() +
   geom_sf(data = ct_state, fill = "white", color = "black") +
   geom_rect(data = my_ct_data, aes(xmin = long-delta, xmax = long+delta, ymin = lat-delta, ymax = lat+delta, fill = colorx)) +
-  geom_sf(data = ct_counties, fill = NA, color = "black", linewidth = 0.4) +
-  geom_sf(data = ct_towns, fill = NA, color = "gray40", linewidth = 0.2) +
+  geom_sf(data = st_sf(geometry = unwalked_borders), color = "gray20", linewidth = 0.3) +
+  geom_sf(data = st_sf(geometry = walked_borders), color = "gray80", linewidth = 0.3) +
+  geom_sf_text(data = town_labels, aes(label = NAME), size = 1.5, family = "sans", fontface = "plain", color = "black") +
   scale_size_continuous(range = c(3, 5)) + # Adjust the size range as needed
   coord_sf(xlim = ct_xlim, ylim = ct_ylim) +
   theme_minimal() +
@@ -72,8 +165,9 @@ my_plot <- ggplot() +
 my_plot2 <- ggplot() +
   geom_sf(data = ct_state, fill = "white", color = "black") +
   geom_rect(data = my_ct_data, aes(xmin = long-delta, xmax = long+delta, ymin = lat-delta, ymax = lat+delta, fill = color2)) +
-  geom_sf(data = ct_counties, fill = NA, color = "black", linewidth = 0.4) +
-  geom_sf(data = ct_towns, fill = NA, color = "gray40", linewidth = 0.2) +
+  geom_sf(data = st_sf(geometry = unwalked_borders), color = "gray20", linewidth = 0.3) +
+  geom_sf(data = st_sf(geometry = walked_borders), color = "gray80", linewidth = 0.3) +
+  geom_sf_text(data = town_labels, aes(label = NAME), size = 1.5, family = "sans", fontface = "plain", color = "black") +
   scale_size_continuous(range = c(3, 5)) + # Adjust the size range as needed
   coord_sf(xlim = ct_xlim, ylim = ct_ylim) +
   theme_minimal() +
@@ -89,8 +183,9 @@ ggsave("Rivers.png", my_plot2, width = 15, height = 15)
 my_plot_nw <- ggplot() +
   geom_sf(data = ct_state, fill = "white", color = "black") +
   geom_rect(data = my_ct_data, aes(xmin = long-delta, xmax = long+delta, ymin = lat-delta, ymax = lat+delta, fill = color2_highlight)) +
-  geom_sf(data = ct_counties, fill = NA, color = "black", linewidth = 0.4) +
-  geom_sf(data = ct_towns, fill = NA, color = "gray40", linewidth = 0.2) +
+  geom_sf(data = st_sf(geometry = unwalked_borders), color = "gray20", linewidth = 0.3) +
+  geom_sf(data = st_sf(geometry = walked_borders), color = "gray80", linewidth = 0.3) +
+  geom_sf_text(data = town_labels, aes(label = NAME), size = 1.5, family = "sans", fontface = "plain", color = "black") +
   scale_fill_manual(values = c("under 0.0" = "#F8766D", "under 0.2" = "#F8766D", "under 0.4" = "#B79F00", "under 0.6" = "#00BA38", "zboundary" = "#619CFF", "largest_unwalked" = "yellow")) +
   coord_sf(xlim = c(-73.73, -73.2), ylim = c(41.7, 42.05)) +
   theme_minimal() +
@@ -124,8 +219,9 @@ dist_colors <- c(
 my_plot_dist <- ggplot() +
   geom_sf(data = ct_state, fill = "white", color = "black") +
   geom_rect(data = my_ct_data, aes(xmin = long-delta, xmax = long+delta, ymin = lat-delta, ymax = lat+delta, fill = dist_bin)) +
-  geom_sf(data = ct_counties, fill = NA, color = "black", linewidth = 0.4) +
-  geom_sf(data = ct_towns, fill = NA, color = "gray40", linewidth = 0.2) +
+  geom_sf(data = st_sf(geometry = unwalked_borders), color = "gray20", linewidth = 0.3) +
+  geom_sf(data = st_sf(geometry = walked_borders), color = "gray80", linewidth = 0.3) +
+  geom_sf_text(data = town_labels, aes(label = NAME), size = 1.5, family = "sans", fontface = "plain", color = "black") +
   scale_fill_manual(values = dist_colors, name = "Distance (miles)", drop = FALSE) +
   coord_sf(xlim = ct_xlim, ylim = ct_ylim) +
   theme_minimal() +
