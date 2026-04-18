@@ -134,16 +134,14 @@ def render_heatmap(distance_grid, extent):
     """Render distance grid as heatmap and save PNG."""
     fig, ax = plt.subplots(figsize=(15, 12))
 
-    # Flip vertically so north is up (lat increases upward)
-    distance_grid_flipped = distance_grid[::-1, :]
-
     # Render with custom colormap: green (visited) to red (far)
+    # origin='upper' is default; extent handles coordinate mapping
     im = ax.imshow(
-        distance_grid_flipped,
+        distance_grid,
         extent=extent,
-        aspect=1.4,
+        aspect='auto',
         cmap='RdYlGn_r',
-        origin='lower',
+        origin='upper',
         interpolation='nearest'
     )
 
