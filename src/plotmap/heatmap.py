@@ -134,14 +134,15 @@ def render_heatmap(distance_grid, extent):
     """Render distance grid as heatmap and save PNG."""
     fig, ax = plt.subplots(figsize=(15, 12))
 
+    # Flip vertically so north is up (matches find_largest_unwalked.py pattern)
+    distance_grid_flipped = distance_grid[::-1]
+
     # Render with custom colormap: green (visited) to red (far)
-    # origin='upper' is default; extent handles coordinate mapping
     im = ax.imshow(
-        distance_grid,
+        distance_grid_flipped,
         extent=extent,
-        aspect='auto',
+        aspect=1.4,
         cmap='RdYlGn_r',
-        origin='upper',
         interpolation='nearest'
     )
 
