@@ -66,7 +66,7 @@ if (!"crossed" %in% names(bounds)) bounds$crossed <- FALSE
 
 # Only check boundaries not yet marked as crossed
 # A boundary is "crossed" if walked points exist in BOTH towns near the shared border
-pad <- 0.005  # ~500m padding around boundary bbox
+pad <- 0.002  # ~200m padding around boundary bbox
 for (r in which(!bounds$crossed)) {
   key <- paste(bounds$Town1[r], bounds$Town2[r], sep = "|")
   geom <- boundary_geoms[[key]]

@@ -19,7 +19,9 @@ from pathlib import Path
 from matplotlib.collections import LineCollection
 
 # Configuration
-GRID_STEP = 0.005  # Matches .005, .010, .015, etc. resolution
+GRID_STEP = 0.002  # Matches .002, .004, .006, etc. resolution
+MILES_PER_DEGREE_LAT = 69.17  # Constant everywhere
+MILES_PER_DEGREE_LON = 52.0   # At CT's latitude (~41-42°N)
 CT_BBOX = {
     'lat_min': 41.00,
     'lat_max': 42.05,
@@ -149,10 +151,10 @@ def get_town_boundaries():
     return walked_lines, unwalked_lines
 
 
-def round_to_nearest_multiple_of_005(value):
-    """Round to nearest .005 thousandths (.005, .010, .015, .020, etc)"""
+def round_to_nearest_multiple_of_002(value):
+    """Round to nearest .002 thousandths (.002, .004, .006, .008, etc)"""
     scaled = value * 1000
-    rounded_scaled = int(np.round(scaled / 5) * 5)
+    rounded_scaled = int(np.round(scaled / 2) * 2)
     return rounded_scaled / 1000
 
 
@@ -168,9 +170,9 @@ def load_walked_coordinates():
 
     combined = pd.concat(dfs, ignore_index=True)
 
-    # Round to nearest .005 thousandths (.005, .010, .015, .020, etc.)
-    combined['lat'] = combined['lat'].apply(round_to_nearest_multiple_of_005)
-    combined['lon'] = combined['lon'].apply(round_to_nearest_multiple_of_005)
+    # Round to nearest .002 thousandths (.002, .004, .006, .008, etc.)
+    combined['lat'] = combined['lat'].apply(round_to_nearest_multiple_of_002)
+    combined['lon'] = combined['lon'].apply(round_to_nearest_multiple_of_002)
 
     combined = combined.drop_duplicates(subset=['lat', 'lon']).reset_index(drop=True)
 
@@ -232,6 +234,17 @@ def build_distance_grid(walked_coords, ct_boundary):
     return distance_grid, extent
 
 
+def grid_cells_to_miles(distance_cells):
+    """Convert Euclidean distance in grid cells to miles.
+
+    Accounts for different lat/lon mile conversions using proper Euclidean formula:
+    distance_miles = sqrt((cells * step * miles_per_deg_lat)^2 + (cells * step * miles_per_deg_lon)^2)
+    """
+    dist_lat_miles = distance_cells * GRID_STEP * MILES_PER_DEGREE_LAT
+    dist_lon_miles = distance_cells * GRID_STEP * MILES_PER_DEGREE_LON
+    return np.sqrt(dist_lat_miles**2 + dist_lon_miles**2)
+
+
 def find_towns_with_largest_holes(distance_grid, ct_bbox=CT_BBOX, grid_step=GRID_STEP):
     """Find towns with largest maximum distances (biggest unwalked holes)."""
     if not Path("ct_towns.geojson").exists():
@@ -276,18 +289,19 @@ def find_towns_with_largest_holes(distance_grid, ct_bbox=CT_BBOX, grid_step=GRID
     town_holes.sort(key=lambda x: x[1], reverse=True)
 
     # Print top 9
-    print("\n" + "="*60)
+    print("\n" + "="*70)
     print("Top 9 Towns with Largest Unwalked Holes")
-    print("="*60)
-    print(f"{'Town':30} | {'Max Distance':>12}")
-    print("-"*60)
+    print("="*70)
+    print(f"{'Town':30} | {'Max Distance (miles)':>20}")
+    print("-"*70)
 
     top_9_towns = []
-    for i, (town, max_dist) in enumerate(town_holes[:9], 1):
-        print(f"{town:30} | {max_dist:>12.1f}")
+    for i, (town, max_dist_cells) in enumerate(town_holes[:9], 1):
+        max_dist_miles = grid_cells_to_miles(max_dist_cells)
+        print(f"{town:30} | {max_dist_miles:>20.2f}")
         top_9_towns.append(town)
 
-    print("="*60 + "\n")
+    print("="*70 + "\n")
 
     return top_9_towns
 
