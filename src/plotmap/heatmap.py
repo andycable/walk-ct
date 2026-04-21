@@ -1,7 +1,7 @@
 """
 Build a Euclidean distance heatmap from walked coordinates.
 
-Loads all 3-decimal lat/long parquet files, builds a grid, and computes
+Loads all 4-decimal lat/long parquet files, builds a grid, and computes
 the Euclidean distance from each grid cell to the nearest walked location.
 Renders as a heatmap and saves as PNG.
 """
@@ -17,6 +17,7 @@ from shapely import contains_xy
 import glob
 from pathlib import Path
 from matplotlib.collections import LineCollection
+from matplotlib.patches import Circle
 
 # Configuration
 GRID_STEP = 0.002  # Matches .002, .004, .006, etc. resolution
@@ -159,8 +160,8 @@ def round_to_nearest_multiple_of_002(value):
 
 
 def load_walked_coordinates():
-    """Load all 3-decimal parquet files and combine, then round to even thousandths."""
-    parquet_files = sorted(glob.glob("../../data/lat_long.3.*.parquet"))
+    """Load all 4-decimal parquet files and combine, then round to even thousandths."""
+    parquet_files = sorted(glob.glob("../../data/lat_long.4.*.parquet"))
 
     print(f"Loading {len(parquet_files)} parquet files...")
     dfs = []
@@ -283,27 +284,36 @@ def find_towns_with_largest_holes(distance_grid, ct_bbox=CT_BBOX, grid_step=GRID
 
         if len(town_distances) > 0:
             max_dist = np.nanmax(town_distances)
-            town_holes.append((name, max_dist))
+            # Find the grid cell with the max distance
+            max_idx = np.nanargmax(distance_grid[inside_town])
+            max_row, max_col = np.where(inside_town)
+            max_row = max_row[max_idx]
+            max_col = max_col[max_idx]
+            hole_lat = lats[max_row]
+            hole_lon = lons[max_col]
+            town_holes.append((name, max_dist, hole_lat, hole_lon))
 
     # Sort by max distance descending
     town_holes.sort(key=lambda x: x[1], reverse=True)
 
-    # Print top 9
+    # Print top 25
     print("\n" + "="*70)
-    print("Top 9 Towns with Largest Unwalked Holes")
+    print("Top 25 Towns with Largest Unwalked Holes")
     print("="*70)
     print(f"{'Town':30} | {'Max Distance (miles)':>20}")
     print("-"*70)
 
-    top_9_towns = []
-    for i, (town, max_dist_cells) in enumerate(town_holes[:9], 1):
+    top_25_towns = []
+    hole_centers = []
+    for i, (town, max_dist_cells, hole_lat, hole_lon) in enumerate(town_holes[:25], 1):
         max_dist_miles = grid_cells_to_miles(max_dist_cells)
         print(f"{town:30} | {max_dist_miles:>20.2f}")
-        top_9_towns.append(town)
+        top_25_towns.append(town)
+        hole_centers.append((hole_lat, hole_lon, max_dist_cells))
 
     print("="*70 + "\n")
 
-    return top_9_towns
+    return top_25_towns, hole_centers
 
 
 def print_distance_summary(distance_grid):
@@ -397,8 +407,8 @@ def get_town_boundary_lines(town_names):
     return boundary_lines
 
 
-def render_heatmap(distance_grid, extent, walked_lines=None, unwalked_lines=None, highlight_towns=None):
-    """Render distance grid as heatmap with optional town boundaries."""
+def render_heatmap(distance_grid, extent, walked_lines=None, unwalked_lines=None, highlight_towns=None, hole_centers=None):
+    """Render distance grid as heatmap with optional town boundaries and hole centers."""
     fig, ax = plt.subplots(figsize=(15, 12))
 
     # Flip vertically so north is up (matches find_largest_unwalked.py pattern)
@@ -426,13 +436,24 @@ def render_heatmap(distance_grid, extent, walked_lines=None, unwalked_lines=None
             lats = [c[1] for c in coords]
             ax.plot(lons, lats, color='darkgray', linewidth=0.5, alpha=0.7)
 
-    # Highlight top 9 towns with largest holes
+    # Highlight towns with largest holes
     if highlight_towns:
         highlight_lines = get_town_boundary_lines(highlight_towns)
         for coords in highlight_lines:
             lons = [c[0] for c in coords]
             lats = [c[1] for c in coords]
-            ax.plot(lons, lats, color='red', linewidth=2, alpha=0.9, label='Top 9 holes' if coords == highlight_lines[0] else '')
+            ax.plot(lons, lats, color='red', linewidth=2, alpha=0.9, label='Top holes' if coords == highlight_lines[0] else '')
+
+    # Mark centers of largest holes with black dots and circles
+    if hole_centers:
+        for hole_lat, hole_lon, max_dist_cells in hole_centers:
+            # Convert distance in cells to degrees for circle radius
+            radius_degrees = max_dist_cells * GRID_STEP
+            # Draw thin black circle around the hole center
+            circle = Circle((hole_lon, hole_lat), radius_degrees, fill=False, edgecolor='black', linewidth=1.0, zorder=10)
+            ax.add_patch(circle)
+            # Draw black dot at center
+            ax.plot(hole_lon, hole_lat, 'ko', markersize=4, markerfacecolor='black', markeredgecolor='black', zorder=11)
 
     # Add town name labels
     add_town_labels(ax, highlight_towns)
@@ -468,13 +489,13 @@ def main():
     print_distance_summary(distance_grid)
 
     # Find towns with largest holes
-    top_5_towns = find_towns_with_largest_holes(distance_grid)
+    top_towns, hole_centers = find_towns_with_largest_holes(distance_grid)
 
     # Load town boundaries (optional)
     walked_lines, unwalked_lines = get_town_boundaries()
 
-    # Render with highlighted top 5 towns
-    render_heatmap(distance_grid, extent, walked_lines, unwalked_lines, top_5_towns)
+    # Render with highlighted top towns and black dots at hole centers
+    render_heatmap(distance_grid, extent, walked_lines, unwalked_lines, top_towns, hole_centers)
 
     print("Done!")
 
