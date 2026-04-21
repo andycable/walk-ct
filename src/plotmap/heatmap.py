@@ -20,7 +20,8 @@ from matplotlib.collections import LineCollection
 from matplotlib.patches import Circle
 
 # Configuration
-GRID_STEP = 0.002  # Matches .002, .004, .006, etc. resolution
+LAT_STEP = 0.003  # Latitude grid spacing (3 units in 3:4 ratio)
+LON_STEP = 0.004  # Longitude grid spacing (4 units in 3:4 ratio)
 MILES_PER_DEGREE_LAT = 69.17  # Constant everywhere
 MILES_PER_DEGREE_LON = 52.0   # At CT's latitude (~41-42°N)
 CT_BBOX = {
@@ -184,27 +185,28 @@ def load_walked_coordinates():
 def build_distance_grid(walked_coords, ct_boundary):
     """
     Build a grid where each cell contains Euclidean distance to nearest walk.
+    Uses 3:4 latitude:longitude ratio for square-ish cells.
 
     Returns:
-        distance_grid: 2D array of distances (np.nan outside CT)
+        distance_grid: 2D array of distances in miles (np.nan outside CT)
         extent: [lon_min, lon_max, lat_min, lat_max] for imshow
     """
     lat_min, lat_max = CT_BBOX['lat_min'], CT_BBOX['lat_max']
     lon_min, lon_max = CT_BBOX['lon_min'], CT_BBOX['lon_max']
 
-    # Grid dimensions
-    rows = int(round((lat_max - lat_min) / GRID_STEP)) + 1
-    cols = int(round((lon_max - lon_min) / GRID_STEP)) + 1
+    # Grid dimensions using 3:4 latitude:longitude ratio
+    rows = int(round((lat_max - lat_min) / LAT_STEP)) + 1
+    cols = int(round((lon_max - lon_min) / LON_STEP)) + 1
 
-    print(f"Grid dimensions: {rows} rows × {cols} cols")
+    print(f"Grid dimensions: {rows} rows × {cols} cols (using 3:4 lat:lon ratio)")
 
     # Create walked mask: True where we walked, False elsewhere
     walked_mask = np.zeros((rows, cols), dtype=bool)
 
     for _, row in walked_coords.iterrows():
         lat, lon = row['lat'], row['lon']
-        r = int(round((lat - lat_min) / GRID_STEP))
-        c = int(round((lon - lon_min) / GRID_STEP))
+        r = int(round((lat - lat_min) / LAT_STEP))
+        c = int(round((lon - lon_min) / LON_STEP))
         if 0 <= r < rows and 0 <= c < cols:
             walked_mask[r, c] = True
 
@@ -213,14 +215,16 @@ def build_distance_grid(walked_coords, ct_boundary):
     # Compute Euclidean distance from each unwalked cell to nearest walked cell
     # distance_transform_edt expects 1=background, 0=feature
     # So we invert: True (walked) -> 0 (feature), False (unwalked) -> 1 (background)
-    distance_grid = ndimage.distance_transform_edt(~walked_mask).astype(float)
+    # Use sampling to account for different lat/lon grid steps and mile conversions
+    sampling = [LAT_STEP * MILES_PER_DEGREE_LAT, LON_STEP * MILES_PER_DEGREE_LON]
+    distance_grid = ndimage.distance_transform_edt(~walked_mask, sampling=sampling).astype(float)
 
-    print(f"Distance range: {distance_grid.min():.0f} to {distance_grid.max():.0f}")
+    print(f"Distance range: {distance_grid.min():.2f} to {distance_grid.max():.2f} miles")
 
     # Mask to CT boundary
-    # Create lat/lon coordinate arrays for each grid cell
-    lats = np.linspace(lat_min, lat_max, rows)
-    lons = np.linspace(lon_min, lon_max, cols)
+    # Create lat/lon coordinate arrays for each grid cell using appropriate steps
+    lats = np.arange(rows) * LAT_STEP + lat_min
+    lons = np.arange(cols) * LON_STEP + lon_min
 
     lon_grid, lat_grid = np.meshgrid(lons, lats)
 
@@ -235,18 +239,16 @@ def build_distance_grid(walked_coords, ct_boundary):
     return distance_grid, extent
 
 
-def grid_cells_to_miles(distance_cells):
-    """Convert Euclidean distance in grid cells to miles.
+def grid_cells_to_miles(distance_miles):
+    """Pass-through function for distance values already in miles.
 
-    Accounts for different lat/lon mile conversions using proper Euclidean formula:
-    distance_miles = sqrt((cells * step * miles_per_deg_lat)^2 + (cells * step * miles_per_deg_lon)^2)
+    The distance_transform_edt now uses sampling parameter with the 3:4 lat:lon ratio,
+    so distances are already computed in miles. This function is kept for compatibility.
     """
-    dist_lat_miles = distance_cells * GRID_STEP * MILES_PER_DEGREE_LAT
-    dist_lon_miles = distance_cells * GRID_STEP * MILES_PER_DEGREE_LON
-    return np.sqrt(dist_lat_miles**2 + dist_lon_miles**2)
+    return distance_miles
 
 
-def find_towns_with_largest_holes(distance_grid, ct_bbox=CT_BBOX, grid_step=GRID_STEP):
+def find_towns_with_largest_holes(distance_grid, ct_bbox=CT_BBOX):
     """Find towns with largest maximum distances (biggest unwalked holes)."""
     if not Path("ct_towns.geojson").exists():
         print("Note: ct_towns.geojson not found. Skipping town analysis.")
@@ -256,14 +258,14 @@ def find_towns_with_largest_holes(distance_grid, ct_bbox=CT_BBOX, grid_step=GRID
     with open("ct_towns.geojson", 'r') as f:
         towns_geojson = json.load(f)
 
-    # Build lat/lon grids for distance lookups
+    # Build lat/lon grids for distance lookups using 3:4 ratio
     lat_min, lat_max = ct_bbox['lat_min'], ct_bbox['lat_max']
     lon_min, lon_max = ct_bbox['lon_min'], ct_bbox['lon_max']
-    rows = int(round((lat_max - lat_min) / grid_step)) + 1
-    cols = int(round((lon_max - lon_min) / grid_step)) + 1
+    rows = int(round((lat_max - lat_min) / LAT_STEP)) + 1
+    cols = int(round((lon_max - lon_min) / LON_STEP)) + 1
 
-    lats = np.linspace(lat_min, lat_max, rows)
-    lons = np.linspace(lon_min, lon_max, cols)
+    lats = np.arange(rows) * LAT_STEP + lat_min
+    lons = np.arange(cols) * LON_STEP + lon_min
     lon_grid, lat_grid = np.meshgrid(lons, lats)
 
     # Extract towns and compute max distance in each
@@ -317,7 +319,7 @@ def find_towns_with_largest_holes(distance_grid, ct_bbox=CT_BBOX, grid_step=GRID
 
 
 def print_distance_summary(distance_grid):
-    """Print summary of number of grid cells at each Euclidean distance."""
+    """Print summary of number of grid cells at each Euclidean distance (in miles)."""
     # Flatten and remove NaN values
     distances = distance_grid[~np.isnan(distance_grid)].flatten()
 
@@ -325,14 +327,15 @@ def print_distance_summary(distance_grid):
         print("No distance data to summarize")
         return
 
-    # Count points at each distance
-    unique_distances, counts = np.unique(distances, return_counts=True)
+    # Round to 0.1 mile precision for summary
+    distances_rounded = np.round(distances, 1)
+    unique_distances, counts = np.unique(distances_rounded, return_counts=True)
 
-    print("\n" + "="*60)
-    print("Euclidean Distance Summary")
-    print("="*60)
-    print(f"{'Distance':>10} | {'Cell Count':>15} | {'Cumulative %':>12}")
-    print("-"*60)
+    print("\n" + "="*65)
+    print("Euclidean Distance Summary (in miles)")
+    print("="*65)
+    print(f"{'Distance (mi)':>15} | {'Cell Count':>15} | {'Cumulative %':>12}")
+    print("-"*65)
 
     total = len(distances)
     cumulative = 0
@@ -340,11 +343,11 @@ def print_distance_summary(distance_grid):
     for dist, count in zip(unique_distances, counts):
         cumulative += count
         pct = (cumulative / total) * 100
-        print(f"{dist:>10.1f} | {count:>15} | {pct:>11.1f}%")
+        print(f"{dist:>15.1f} | {count:>15} | {pct:>11.1f}%")
 
-    print("-"*60)
-    print(f"{'TOTAL':>10} | {total:>15}")
-    print("="*60 + "\n")
+    print("-"*65)
+    print(f"{'TOTAL':>15} | {total:>15}")
+    print("="*65 + "\n")
 
 
 def add_town_labels(ax, highlight_towns=None):
@@ -446,9 +449,11 @@ def render_heatmap(distance_grid, extent, walked_lines=None, unwalked_lines=None
 
     # Mark centers of largest holes with black dots and circles
     if hole_centers:
-        for hole_lat, hole_lon, max_dist_cells in hole_centers:
-            # Convert distance in cells to degrees for circle radius
-            radius_degrees = max_dist_cells * GRID_STEP
+        for hole_lat, hole_lon, max_dist_miles in hole_centers:
+            # Convert distance in miles to degrees for circle radius
+            # Use average of lat and lon degree conversions
+            avg_miles_per_degree = (MILES_PER_DEGREE_LAT + MILES_PER_DEGREE_LON) / 2
+            radius_degrees = max_dist_miles / avg_miles_per_degree
             # Draw thin black circle around the hole center
             circle = Circle((hole_lon, hole_lat), radius_degrees, fill=False, edgecolor='black', linewidth=1.0, zorder=10)
             ax.add_patch(circle)
@@ -458,7 +463,7 @@ def render_heatmap(distance_grid, extent, walked_lines=None, unwalked_lines=None
     # Add town name labels
     add_town_labels(ax, highlight_towns)
 
-    cbar = plt.colorbar(im, ax=ax, label='Euclidean distance (grid cells)')
+    cbar = plt.colorbar(im, ax=ax, label='Euclidean distance (miles)')
 
     ax.set_xlabel('Longitude')
     ax.set_ylabel('Latitude')
@@ -474,7 +479,7 @@ def render_heatmap(distance_grid, extent, walked_lines=None, unwalked_lines=None
 
 
 def main():
-    print("Building Manhattan distance heatmap...")
+    print("Building Euclidean distance heatmap with 3:4 latitude:longitude ratio...")
 
     # Load data
     walked_coords = load_walked_coordinates()
