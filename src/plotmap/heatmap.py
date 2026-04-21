@@ -17,7 +17,7 @@ from shapely import contains_xy
 import glob
 from pathlib import Path
 from matplotlib.collections import LineCollection
-from matplotlib.patches import Circle
+from matplotlib.patches import Circle, Ellipse
 
 # Configuration
 LAT_STEP = 0.003  # Latitude grid spacing (3 units in 3:4 ratio)
@@ -450,13 +450,14 @@ def render_heatmap(distance_grid, extent, walked_lines=None, unwalked_lines=None
     # Mark centers of largest holes with black dots and circles
     if hole_centers:
         for hole_lat, hole_lon, max_dist_miles in hole_centers:
-            # Convert distance in miles to degrees for circle radius
-            # Use average of lat and lon degree conversions
-            avg_miles_per_degree = (MILES_PER_DEGREE_LAT + MILES_PER_DEGREE_LON) / 2
-            radius_degrees = max_dist_miles / avg_miles_per_degree
-            # Draw thin black circle around the hole center
-            circle = Circle((hole_lon, hole_lat), radius_degrees, fill=False, edgecolor='black', linewidth=1.0, zorder=10)
-            ax.add_patch(circle)
+            # Convert distance in miles to degrees for each direction separately
+            # Account for different mile-per-degree conversions
+            radius_lat = max_dist_miles / MILES_PER_DEGREE_LAT
+            radius_lon = max_dist_miles / MILES_PER_DEGREE_LON
+            # Draw ellipse that appears as a circle on the map (accounting for 3:4 ratio)
+            ellipse = Ellipse((hole_lon, hole_lat), width=2*radius_lon, height=2*radius_lat,
+                            fill=False, edgecolor='black', linewidth=1.0, zorder=10)
+            ax.add_patch(ellipse)
             # Draw black dot at center
             ax.plot(hole_lon, hole_lat, 'ko', markersize=4, markerfacecolor='black', markeredgecolor='black', zorder=11)
 
