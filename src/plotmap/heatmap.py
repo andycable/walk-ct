@@ -298,24 +298,25 @@ def find_towns_with_largest_holes(distance_grid, ct_bbox=CT_BBOX):
     # Sort by max distance descending
     town_holes.sort(key=lambda x: x[1], reverse=True)
 
-    # Print top 25
+    # Print top 125
     print("\n" + "="*70)
-    print("Top 25 Towns with Largest Unwalked Holes")
+    print("Top 125 Towns with Largest Unwalked Holes")
     print("="*70)
     print(f"{'Town':30} | {'Max Distance (miles)':>20}")
     print("-"*70)
 
-    top_25_towns = []
+    top_125_towns = []
     hole_centers = []
-    for i, (town, max_dist_cells, hole_lat, hole_lon) in enumerate(town_holes[:25], 1):
+    for i, (town, max_dist_cells, hole_lat, hole_lon) in enumerate(town_holes[:125], 1):
         max_dist_miles = grid_cells_to_miles(max_dist_cells)
         print(f"{town:30} | {max_dist_miles:>20.2f}")
-        top_25_towns.append(town)
-        hole_centers.append((hole_lat, hole_lon, max_dist_cells))
+        if max_dist_miles > 1.0:
+            top_125_towns.append(town)
+            hole_centers.append((hole_lat, hole_lon, max_dist_cells))
 
     print("="*70 + "\n")
 
-    return top_25_towns, hole_centers
+    return top_125_towns, hole_centers
 
 
 def print_distance_summary(distance_grid):
@@ -447,9 +448,11 @@ def render_heatmap(distance_grid, extent, walked_lines=None, unwalked_lines=None
             lats = [c[1] for c in coords]
             ax.plot(lons, lats, color='red', linewidth=2, alpha=0.9, label='Top holes' if coords == highlight_lines[0] else '')
 
-    # Mark centers of largest holes with black dots and circles
+    # Mark centers of largest holes with black dots and circles (only for holes > 1.0 miles)
     if hole_centers:
         for hole_lat, hole_lon, max_dist_miles in hole_centers:
+            if max_dist_miles <= 1.0:
+                continue
             # Convert distance in miles to degrees for each direction separately
             # Account for different mile-per-degree conversions
             radius_lat = max_dist_miles / MILES_PER_DEGREE_LAT
@@ -460,6 +463,11 @@ def render_heatmap(distance_grid, extent, walked_lines=None, unwalked_lines=None
             ax.add_patch(ellipse)
             # Draw black dot at center
             ax.plot(hole_lon, hole_lat, 'ko', markersize=4, markerfacecolor='black', markeredgecolor='black', zorder=11)
+            # Add distance text inside the circle
+            ax.text(hole_lon, hole_lat, f'{max_dist_miles:.2f}', fontsize=6,
+                    color='white', weight='bold', ha='center', va='center',
+                    bbox=dict(boxstyle='round,pad=0.3', facecolor='black', alpha=0.7),
+                    zorder=12)
 
     # Add town name labels
     add_town_labels(ax, highlight_towns)
