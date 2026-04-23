@@ -11,6 +11,7 @@ import urllib.request
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap, BoundaryNorm
 from scipy import ndimage
 from shapely.geometry import shape, LineString, MultiLineString
 from shapely import contains_xy
@@ -319,6 +320,102 @@ def find_towns_with_largest_holes(distance_grid, ct_bbox=CT_BBOX):
     return top_125_towns, hole_centers
 
 
+def find_largest_unwalked_areas(distance_grid, ct_bbox=CT_BBOX):
+    """Find the 5 largest contiguous areas with distance < 1.0 miles (green only).
+
+    Uses 8-connectivity (includes diagonal neighbors).
+    Returns top_5 areas and labeled_grid for visualization.
+    """
+    # Create mask for unwalked areas (distance > 0, i.e., not walked)
+    unwalked_mask = (distance_grid > 0) & ~np.isnan(distance_grid)
+
+    # Define orthogonal connectivity (4-neighbor only: north, south, east, west)
+    orthogonal_structure = ndimage.generate_binary_structure(2, 1)
+
+    # Label connected components with orthogonal connectivity
+    labeled_grid, num_features = ndimage.label(unwalked_mask, structure=orthogonal_structure)
+
+    if num_features == 0:
+        print("No unwalked areas found (all areas have been walked)")
+        return [], labeled_grid
+
+    # Compute area of each component
+    lat_step_miles = LAT_STEP * MILES_PER_DEGREE_LAT
+    lon_step_miles = LON_STEP * MILES_PER_DEGREE_LON
+    sq_miles_per_cell = lat_step_miles * lon_step_miles
+
+    areas = []
+    for label_id in range(1, num_features + 1):
+        cell_mask = labeled_grid == label_id
+        cell_count = np.sum(cell_mask)
+        area_sq_miles = cell_count * sq_miles_per_cell
+
+        # Find centroid (center) of area
+        rows, cols = np.where(cell_mask)
+        center_row = int(np.mean(rows))
+        center_col = int(np.mean(cols))
+
+        # Convert to lat/lon
+        lat_min = ct_bbox['lat_min']
+        lon_min = ct_bbox['lon_min']
+        center_lat = lat_min + center_row * LAT_STEP
+        center_lon = lon_min + center_col * LON_STEP
+
+        areas.append({
+            'label_id': label_id,
+            'cell_count': cell_count,
+            'area_sq_miles': area_sq_miles,
+            'center_lat': center_lat,
+            'center_lon': center_lon
+        })
+
+    # Sort by area descending
+    areas.sort(key=lambda x: x['area_sq_miles'], reverse=True)
+    top_20 = areas[:20]
+
+    # Create color palette of 20 blue-ish shades
+    blue_palette = [
+        (0.0, 0.0, 1.0),      # 1: pure blue
+        (0.2, 0.4, 1.0),      # 2: light blue
+        (0.0, 0.3, 0.8),      # 3: darker blue
+        (0.3, 0.6, 1.0),      # 4: lighter blue
+        (0.0, 0.2, 0.6),      # 5: deep blue
+        (0.4, 0.7, 1.0),      # 6: pale blue
+        (0.1, 0.4, 0.9),      # 7: medium blue
+        (0.2, 0.5, 0.8),      # 8: steel blue
+        (0.5, 0.8, 1.0),      # 9: sky blue
+        (0.0, 0.5, 0.7),      # 10: teal-blue
+        (0.3, 0.7, 0.9),      # 11: cornflower
+        (0.1, 0.3, 0.7),      # 12: navy-ish
+        (0.6, 0.85, 1.0),     # 13: very light blue
+        (0.0, 0.1, 0.5),      # 14: midnight blue
+        (0.4, 0.6, 0.9),      # 15: periwinkle
+        (0.2, 0.6, 0.7),      # 16: cyan-blue
+        (0.5, 0.7, 1.0),      # 17: powder blue
+        (0.1, 0.5, 0.8),      # 18: ocean blue
+        (0.3, 0.4, 0.8),      # 19: slate blue
+        (0.4, 0.8, 0.9),      # 20: light cyan
+    ]
+
+    for i, area in enumerate(top_20):
+        area['color'] = blue_palette[i]
+
+    print("\n" + "="*100)
+    print("Top 20 Largest Contiguous Unwalked Areas (distance > 0.0 mi)")
+    print("="*100)
+    print(f"{'Rank':>5} | {'Cell Count':>12} | {'Area (sq mi)':>15} | {'Center Lat':>12} | {'Center Lon':>12}")
+    print("-"*100)
+
+    for rank, area in enumerate(top_20, 1):
+        print(f"{rank:>5} | {area['cell_count']:>12} | {area['area_sq_miles']:>15.2f} | "
+              f"{area['center_lat']:>12.4f} | {area['center_lon']:>12.4f}")
+
+    print("="*100)
+    print(f"Total contiguous unwalked areas found: {num_features}\n")
+
+    return top_20, labeled_grid
+
+
 def print_distance_summary(distance_grid):
     """Print summary of number of grid cells at each Euclidean distance (in miles)."""
     # Flatten and remove NaN values
@@ -411,19 +508,61 @@ def get_town_boundary_lines(town_names):
     return boundary_lines
 
 
-def render_heatmap(distance_grid, extent, walked_lines=None, unwalked_lines=None, highlight_towns=None, hole_centers=None):
+def render_heatmap(distance_grid, extent, walked_lines=None, unwalked_lines=None, highlight_towns=None, hole_centers=None, top_5_areas=None, labeled_grid=None):
     """Render distance grid as heatmap with optional town boundaries and hole centers."""
     fig, ax = plt.subplots(figsize=(15, 12))
 
     # Flip vertically so north is up (matches find_largest_unwalked.py pattern)
     distance_grid_flipped = distance_grid[::-1]
 
-    # Render with custom colormap: green (visited) to red (far)
+    # Build RGB array directly: color each cell based on distance thresholds
+    # white (distance=0) -> green (<1.0) -> orange (1.0-1.8) -> red (>1.8)
+    rgb_map = {
+        'white': np.array([1.0, 1.0, 1.0]),      # white for distance=0
+        'green': np.array([0.0, 0.502, 0.0]),    # green for <1.0
+        'orange': np.array([1.0, 0.647, 0.0]),   # orange for 1.0-1.8
+        'red': np.array([1.0, 0.0, 0.0]),        # red for >1.8
+    }
+
+    # Create mapping of label IDs to colors for top 20 areas
+    label_to_color = {}
+    if top_5_areas and labeled_grid is not None:
+        for area in top_5_areas:
+            label_to_color[area['label_id']] = area.get('color', (0.0, 0.0, 1.0))
+
+    # Build RGB grid in original (non-flipped) orientation
+    rgb_grid = np.zeros((*distance_grid.shape, 3))
+
+    for i in range(distance_grid.shape[0]):
+        for j in range(distance_grid.shape[1]):
+            dist = distance_grid[i, j]
+
+            # Check if this cell is in one of the top 20 areas and get its color
+            cell_label = labeled_grid[i, j] if labeled_grid is not None else 0
+            cell_color = label_to_color.get(cell_label, None)
+
+            if cell_color is not None:
+                # Use assigned blue shade for this unwalked area
+                rgb_grid[i, j] = np.array(cell_color)
+            elif np.isnan(dist):
+                # Outside CT: light gray
+                rgb_grid[i, j] = np.array([0.95, 0.95, 0.95])
+            elif dist == 0:
+                rgb_grid[i, j] = rgb_map['white']
+            elif dist < 1.0:
+                rgb_grid[i, j] = rgb_map['green']
+            elif dist < 1.8:
+                rgb_grid[i, j] = rgb_map['orange']
+            else:
+                rgb_grid[i, j] = rgb_map['red']
+
+    # Flip for display (north up)
+    rgb_grid = rgb_grid[::-1]
+
     im = ax.imshow(
-        distance_grid_flipped,
+        rgb_grid,
         extent=extent,
         aspect=1.4,
-        cmap='RdYlGn_r',
         interpolation='nearest'
     )
 
@@ -446,7 +585,7 @@ def render_heatmap(distance_grid, extent, walked_lines=None, unwalked_lines=None
         for coords in highlight_lines:
             lons = [c[0] for c in coords]
             lats = [c[1] for c in coords]
-            ax.plot(lons, lats, color='red', linewidth=2, alpha=0.9, label='Top holes' if coords == highlight_lines[0] else '')
+            ax.plot(lons, lats, color='red', linewidth=0.5, alpha=0.9, label='Top holes' if coords == highlight_lines[0] else '')
 
     # Mark centers of largest holes with black dots and circles (only for holes > 1.0 miles)
     if hole_centers:
@@ -461,13 +600,25 @@ def render_heatmap(distance_grid, extent, walked_lines=None, unwalked_lines=None
             ellipse = Ellipse((hole_lon, hole_lat), width=2*radius_lon, height=2*radius_lat,
                             fill=False, edgecolor='black', linewidth=1.0, zorder=10)
             ax.add_patch(ellipse)
-            # Draw black dot at center
-            ax.plot(hole_lon, hole_lat, 'ko', markersize=4, markerfacecolor='black', markeredgecolor='black', zorder=11)
-            # Add distance text inside the circle
+            # Draw small dot at center
+            ax.plot(hole_lon, hole_lat, 'ko', markersize=1, markerfacecolor='black', markeredgecolor='black', zorder=11)
+            # Add distance text inside the circle with transparent background
             ax.text(hole_lon, hole_lat, f'{max_dist_miles:.2f}', fontsize=6,
-                    color='white', weight='bold', ha='center', va='center',
-                    bbox=dict(boxstyle='round,pad=0.3', facecolor='black', alpha=0.7),
+                    color='black', weight='bold', ha='center', va='center',
+                    bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.0, edgecolor='none'),
                     zorder=12)
+
+    # Add numeric labels (1-20) to top 20 unwalked areas at their centroids
+    if top_5_areas and labeled_grid is not None:
+        lat_min = CT_BBOX['lat_min']
+        lon_min = CT_BBOX['lon_min']
+        for rank, area in enumerate(top_5_areas, 1):
+            center_lat = area['center_lat']
+            center_lon = area['center_lon']
+            ax.text(center_lon, center_lat, str(rank), fontsize=10, color='white',
+                    weight='bold', ha='center', va='center',
+                    bbox=dict(boxstyle='circle,pad=0.3', facecolor='black', alpha=0.7, edgecolor='white', linewidth=1),
+                    zorder=15)
 
     # Add town name labels
     add_town_labels(ax, highlight_towns)
@@ -502,14 +653,17 @@ def main():
     # Print distance summary
     print_distance_summary(distance_grid)
 
+    # Find largest contiguous unwalked areas
+    top_20_areas, labeled_grid = find_largest_unwalked_areas(distance_grid)
+
     # Find towns with largest holes
     top_towns, hole_centers = find_towns_with_largest_holes(distance_grid)
 
     # Load town boundaries (optional)
     walked_lines, unwalked_lines = get_town_boundaries()
 
-    # Render with highlighted top towns and black dots at hole centers
-    render_heatmap(distance_grid, extent, walked_lines, unwalked_lines, top_towns, hole_centers)
+    # Render with highlighted top towns, black dots at hole centers, and top 20 unwalked areas
+    render_heatmap(distance_grid, extent, walked_lines, unwalked_lines, top_towns, hole_centers, top_20_areas, labeled_grid)
 
     print("Done!")
 
