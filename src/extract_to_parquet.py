@@ -29,8 +29,8 @@ OUTPUT_DIR = Path("C:\\Repo\\walk-ct\\activities")
 SEMICIRCLES_TO_DEGREES = (2**31) / 180
 
 
-def load_activity_metadata(csv_path: Path) -> Dict[int, Dict]:
-    """Load activity metadata from activities.csv, keyed by both Activity ID and filename."""
+def load_activity_metadata(csv_path: Path, target_year: int, target_month: int) -> Dict[int, Dict]:
+    """Load activity metadata from activities.csv, filtered to target month only."""
     if not csv_path.exists():
         print(f"Warning: {csv_path} not found, using minimal metadata")
         return {}
@@ -48,6 +48,10 @@ def load_activity_metadata(csv_path: Path) -> Dict[int, Dict]:
                 activity_date = pd.to_datetime(date_str).date()
             except:
                 activity_date = None
+
+            # Skip activities not in the target month
+            if activity_date is None or activity_date.year != target_year or activity_date.month != target_month:
+                continue
 
             meta = {
                 "name": row["Activity Name"],
@@ -233,8 +237,8 @@ def main():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     print(f"Loading metadata from {METADATA_CSV}...")
-    metadata = load_activity_metadata(METADATA_CSV)
-    print(f"  Found {len(metadata)} activities in metadata")
+    metadata = load_activity_metadata(METADATA_CSV, YEAR, MONTH)
+    print(f"  Found {len(metadata)} activities in {YEAR}-{MONTH:02d}")
 
     all_points = []
     files_processed = 0
@@ -251,6 +255,10 @@ def main():
                     # Skip non-numeric filenames
                     continue
 
+                # Skip if activity is not in target month metadata
+                if activity_id not in metadata:
+                    continue
+
                 points = []
 
                 if filepath.suffix == ".gpx":
@@ -264,11 +272,6 @@ def main():
                     points = parse_fit(filepath, activity_id, metadata)
 
                 if points:
-                    # Filter by target month
-                    activity_date = points[0]["activity_date"]
-                    if activity_date.year != YEAR or activity_date.month != MONTH:
-                        continue
-
                     all_points.extend(points)
                     files_processed += 1
                     total_points += len(points)
