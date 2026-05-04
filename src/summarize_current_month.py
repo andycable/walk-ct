@@ -157,13 +157,37 @@ def parse_fit_gz(filepath: Path, activity_id: Optional[int], metadata: Dict) -> 
     return points
 
 
+def get_previous_month_max_activity_id() -> int:
+    """Get max activity_id from previous month's parquet file."""
+    prev_year = CURRENT_YEAR
+    prev_month = CURRENT_MONTH - 1
+    if prev_month == 0:
+        prev_year -= 1
+        prev_month = 12
+
+    prev_file = OUTPUT_DIR / f"activities_{prev_year}_{prev_month:02d}.parquet"
+    if prev_file.exists():
+        try:
+            df = pd.read_parquet(prev_file, columns=["activity_id"])
+            return int(df["activity_id"].max())
+        except Exception as e:
+            print(f"  Warning: Could not read previous month file: {e}")
+            return 0
+    return 0
+
+
 def main():
-    """Extract 2026-04 activities."""
+    """Extract current month activities."""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     print(f"Loading metadata from {METADATA_CSV}...")
     metadata = load_activity_metadata(METADATA_CSV)
     print(f"  Found {len(metadata)} activities in metadata")
+
+    # Get cutoff: only process activities with IDs > previous month's max
+    min_activity_id = get_previous_month_max_activity_id()
+    if min_activity_id > 0:
+        print(f"  Only processing activities with ID > {min_activity_id}")
 
     all_points = []
     files_processed = 0
@@ -179,10 +203,8 @@ def main():
                 except ValueError:
                     continue
 
-                # Check if this activity is from current month
-                meta = metadata.get(activity_id, {})
-                activity_date = meta.get("date")
-                if activity_date is None or activity_date.year != CURRENT_YEAR or activity_date.month != CURRENT_MONTH:
+                # Skip activities that were already processed in a previous month
+                if activity_id <= min_activity_id:
                     continue
 
                 points = []
