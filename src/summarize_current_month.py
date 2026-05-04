@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""
+r"""
 Extract current month activities from Strava export + Downloads GPX files.
 Creates c:\walking\activities_YYYY_MM.parquet based on system clock.
 """
@@ -23,7 +23,7 @@ CURRENT_MONTH = now.month
 STRAVA_EXPORT_DIR = Path("C:\\export_55533644\\activities")
 METADATA_CSV = Path("C:\\export_55533644\\activities.csv")
 DOWNLOADS_DIR = Path("C:\\Users\\AndrewCable_kau4dpf\\Downloads")
-OUTPUT_DIR = Path("C:\\walking")
+OUTPUT_DIR = Path("C:\\Repo\\walk-ct\\activities")
 OUTPUT_FILE = OUTPUT_DIR / f"activities_{CURRENT_YEAR}_{CURRENT_MONTH:02d}.parquet"
 
 SEMICIRCLES_TO_DEGREES = (2**31) / 180
