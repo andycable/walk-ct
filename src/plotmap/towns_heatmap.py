@@ -41,16 +41,16 @@ def get_ct_boundary():
     raise FileNotFoundError(f"{BOUNDARY_CACHE} not found")
 
 
-def round_to_nearest_multiple_of_002(value):
-    """Round to nearest .002 thousandths."""
-    scaled = value * 1000
-    rounded_scaled = int(np.round(scaled / 2) * 2)
-    return rounded_scaled / 1000
+def round_to_nearest_multiple_of_0001(value):
+    """Round to nearest .0001 (5-digit precision)."""
+    scaled = value * 10000
+    rounded_scaled = int(np.round(scaled))
+    return rounded_scaled / 10000
 
 
 def load_walked_coordinates():
-    """Load all 4-decimal parquet files and combine."""
-    parquet_files = sorted(glob.glob("../../data/lat_long.4.*.parquet"))
+    """Load all 5-decimal parquet files and combine."""
+    parquet_files = sorted(glob.glob("../../data/lat_long.5.*.parquet"))
 
     print(f"Loading {len(parquet_files)} parquet files...")
     dfs = []
@@ -60,9 +60,9 @@ def load_walked_coordinates():
 
     combined = pd.concat(dfs, ignore_index=True)
 
-    # Round to nearest .002 thousandths
-    combined['lat'] = combined['lat'].apply(round_to_nearest_multiple_of_002)
-    combined['lon'] = combined['lon'].apply(round_to_nearest_multiple_of_002)
+    # Round to nearest .0001 (5-digit precision)
+    combined['lat'] = combined['lat'].apply(round_to_nearest_multiple_of_0001)
+    combined['lon'] = combined['lon'].apply(round_to_nearest_multiple_of_0001)
 
     combined = combined.drop_duplicates(subset=['lat', 'lon']).reset_index(drop=True)
 
