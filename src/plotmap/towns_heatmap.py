@@ -15,10 +15,14 @@ from shapely.geometry import shape
 from shapely import contains_xy
 import glob
 from pathlib import Path
+import logging
+from datetime import datetime
+import osmnx as ox
+from matplotlib.patches import Patch
 
-# Configuration
-LAT_STEP = 0.003
-LON_STEP = 0.004
+# Configuration (5x5 grid subdivision)
+LAT_STEP = 0.0006
+LON_STEP = 0.0008
 MILES_PER_DEGREE_LAT = 69.17
 MILES_PER_DEGREE_LON = 52.0
 CT_BBOX = {
@@ -116,6 +120,38 @@ def build_distance_grid(walked_coords, ct_boundary):
     return distance_grid, extent, rows, cols
 
 
+def get_town_streets(town_geom, town_name, logger):
+    """Fetch street network for a town from OpenStreetMap."""
+    try:
+        import time
+        logger.info(f"  [START] Fetching streets for {town_name}")
+        start_time = time.time()
+
+        # Fetch street network from geometry polygon
+        logger.info(f"  [QUERY] graph_from_polygon() starting")
+        G = ox.graph_from_polygon(town_geom, network_type='all', simplify=True)
+        query_time = time.time()
+        logger.info(f"  [QUERY] graph_from_polygon() completed in {query_time - start_time:.2f}s")
+
+        # Extract street edges as line coordinates
+        logger.info(f"  [EXTRACT] Extracting street coordinates")
+        streets = []
+        for u, v, data in G.edges(data=True):
+            if 'geometry' in data:
+                coords = list(data['geometry'].coords)
+            else:
+                coords = [(G.nodes[u]['x'], G.nodes[u]['y']), (G.nodes[v]['x'], G.nodes[v]['y'])]
+            if len(coords) >= 2:
+                streets.append(coords)
+
+        elapsed = time.time() - start_time
+        logger.info(f"  [END] Found {len(streets)} street segments in {elapsed:.2f}s")
+        return streets
+    except Exception as e:
+        logger.warning(f"  [ERROR] Could not fetch streets: {e}")
+        return []
+
+
 def get_town_boundary_lines(town_names):
     """Extract boundary lines for specified towns from GeoJSON."""
     if not Path("ct_towns.geojson").exists():
@@ -145,19 +181,23 @@ def get_town_boundary_lines(town_names):
     return boundary_lines
 
 
-def render_town_heatmap(town_grid, extent, town_geom, town_name, output_path):
-    """Render a single town's heatmap with distance color scheme."""
+def render_town_heatmap(town_grid, extent, town_geom, town_name, output_path, streets=None):
+    """Render a single town's heatmap with quarter-mile color bands and street overlay."""
     fig, ax = plt.subplots(figsize=(12, 12))
 
     # Flip for display
     town_grid_flipped = town_grid[::-1]
 
-    # Build RGB array with distance color scheme
+    # Quarter-mile color scheme: distinct color for each 0.25-mile band up to 1.5 miles
     rgb_map = {
-        'white': np.array([1.0, 1.0, 1.0]),      # distance=0
-        'green': np.array([0.0, 0.502, 0.0]),    # <1.0
-        'orange': np.array([1.0, 0.647, 0.0]),   # 1.0-1.8
-        'red': np.array([1.0, 0.0, 0.0]),        # >1.8
+        'white': np.array([1.0, 1.0, 1.0]),              # distance=0 (walked)
+        '0.00-0.25': np.array([0.68, 0.85, 1.0]),       # light blue
+        '0.25-0.50': np.array([0.0, 0.5, 1.0]),         # blue
+        '0.50-0.75': np.array([0.0, 0.75, 1.0]),        # cyan
+        '0.75-1.00': np.array([0.0, 0.75, 0.0]),        # green
+        '1.00-1.25': np.array([1.0, 1.0, 0.0]),         # yellow
+        '1.25-1.50': np.array([1.0, 0.647, 0.0]),       # orange
+        '>1.50': np.array([1.0, 0.0, 0.0]),             # red
     }
 
     rgb_grid = np.zeros((*town_grid.shape, 3))
@@ -170,12 +210,20 @@ def render_town_heatmap(town_grid, extent, town_geom, town_name, output_path):
                 rgb_grid[i, j] = np.array([0.95, 0.95, 0.95])  # light gray outside town
             elif dist == 0:
                 rgb_grid[i, j] = rgb_map['white']
-            elif dist < 1.0:
-                rgb_grid[i, j] = rgb_map['green']
-            elif dist < 1.8:
-                rgb_grid[i, j] = rgb_map['orange']
+            elif dist < 0.25:
+                rgb_grid[i, j] = rgb_map['0.00-0.25']
+            elif dist < 0.50:
+                rgb_grid[i, j] = rgb_map['0.25-0.50']
+            elif dist < 0.75:
+                rgb_grid[i, j] = rgb_map['0.50-0.75']
+            elif dist < 1.00:
+                rgb_grid[i, j] = rgb_map['0.75-1.00']
+            elif dist < 1.25:
+                rgb_grid[i, j] = rgb_map['1.00-1.25']
+            elif dist < 1.50:
+                rgb_grid[i, j] = rgb_map['1.25-1.50']
             else:
-                rgb_grid[i, j] = rgb_map['red']
+                rgb_grid[i, j] = rgb_map['>1.50']
 
     # Flip for display
     rgb_grid = rgb_grid[::-1]
@@ -187,6 +235,14 @@ def render_town_heatmap(town_grid, extent, town_geom, town_name, output_path):
         interpolation='nearest'
     )
 
+    # Draw streets if available
+    if streets:
+        for coords in streets:
+            if len(coords) >= 2:
+                lons = [c[0] for c in coords]
+                lats = [c[1] for c in coords]
+                ax.plot(lons, lats, color='darkgray', linewidth=0.7, alpha=0.8)
+
     # Draw town boundary
     boundary_lines = get_town_boundary_lines([town_name])
     if boundary_lines:
@@ -195,11 +251,27 @@ def render_town_heatmap(town_grid, extent, town_geom, town_name, output_path):
             lats = [c[1] for c in coords]
             ax.plot(lons, lats, color='black', linewidth=1.0, alpha=0.8)
 
-    cbar = plt.colorbar(im, ax=ax, label='Euclidean distance (miles)')
+    # Create custom legend for distance bands
+    legend_elements = [
+        Patch(facecolor=[1.0, 1.0, 1.0], edgecolor='black', label='Walked (0 mi)'),
+        Patch(facecolor=[0.68, 0.85, 1.0], edgecolor='black', label='0.00–0.25 mi'),
+        Patch(facecolor=[0.0, 0.5, 1.0], edgecolor='black', label='0.25–0.50 mi'),
+        Patch(facecolor=[0.0, 0.75, 1.0], edgecolor='black', label='0.50–0.75 mi'),
+        Patch(facecolor=[0.0, 0.75, 0.0], edgecolor='black', label='0.75–1.00 mi'),
+        Patch(facecolor=[1.0, 1.0, 0.0], edgecolor='black', label='1.00–1.25 mi'),
+        Patch(facecolor=[1.0, 0.647, 0.0], edgecolor='black', label='1.25–1.50 mi'),
+        Patch(facecolor=[1.0, 0.0, 0.0], edgecolor='black', label='>1.50 mi'),
+    ]
+    # Place the color key in a single row along the top, above the plot,
+    # so it never covers the town.
+    ax.legend(handles=legend_elements, loc='lower center',
+              bbox_to_anchor=(0.5, 1.02), ncol=len(legend_elements),
+              fontsize=8, framealpha=0.95, columnspacing=1.0,
+              handletextpad=0.4, borderaxespad=0.0)
 
     ax.set_xlabel('Longitude')
     ax.set_ylabel('Latitude')
-    ax.set_title(f'{town_name} - Coverage Heatmap')
+    ax.set_title(f'{town_name} - Coverage Heatmap', pad=28)
 
     plt.tight_layout()
     plt.savefig(output_path, dpi=150, bbox_inches='tight')
@@ -207,12 +279,24 @@ def render_town_heatmap(town_grid, extent, town_geom, town_name, output_path):
 
 
 def main():
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    logger = logging.getLogger(__name__)
+
+    logger.info("Starting per-town heatmap generation...")
     print("Generating per-town heatmaps...")
 
     # Load data once
+    logger.info("Loading walked coordinates...")
     walked_coords = load_walked_coordinates()
     ct_boundary = get_ct_boundary()
+    logger.info("Building distance grid...")
     distance_grid, full_extent, rows, cols = build_distance_grid(walked_coords, ct_boundary)
+    logger.info("Distance grid complete")
 
     # Create output directory
     Path("towns").mkdir(exist_ok=True)
@@ -233,6 +317,8 @@ def main():
             continue
 
         town_count += 1
+        logger.info(f"[{town_count:3d}] Starting {name}")
+
         geom = shape(feature['geometry'])
         minx, miny, maxx, maxy = geom.bounds  # lon_min, lat_min, lon_max, lat_max
 
@@ -260,14 +346,19 @@ def main():
             CT_BBOX['lat_min'] + (r_max + 1) * LAT_STEP,
         ]
 
+        # Fetch streets for this town
+        streets = get_town_streets(geom, name, logger)
+
         # Generate filename and render
         filename = name.replace(' ', '_').replace('/', '_')
         output_path = f"towns/{filename}_heatmap.png"
 
         print(f"  [{town_count:3d}] {name:30s} -> {filename}_heatmap.png")
 
-        render_town_heatmap(town_grid, town_extent, geom, name, output_path)
+        render_town_heatmap(town_grid, town_extent, geom, name, output_path, streets)
+        logger.info(f"[{town_count:3d}] Completed {name}")
 
+    logger.info(f"Completed! Generated {town_count} town heatmaps in towns/ folder")
     print(f"\nGenerated {town_count} town heatmaps in towns/ folder")
 
 
