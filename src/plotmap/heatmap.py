@@ -18,7 +18,7 @@ from shapely import contains_xy
 import glob
 from pathlib import Path
 from matplotlib.collections import LineCollection
-from matplotlib.patches import Circle, Ellipse
+from matplotlib.patches import Circle, Ellipse, Patch
 
 # Configuration
 LAT_STEP = 0.003  # Latitude grid spacing (3 units in 3:4 ratio)
@@ -371,10 +371,20 @@ def find_largest_unwalked_areas(distance_grid, ct_bbox=CT_BBOX):
 
     # Sort by area descending
     areas.sort(key=lambda x: x['area_sq_miles'], reverse=True)
-    top_10 = areas[:10]
+    top_10 = areas[:20]
 
     # Create color palette of 10 blue-ish shades
     blue_palette = [
+        (0.0, 0.0, 1.0),      # 1: pure blue
+        (0.2, 0.4, 1.0),      # 2: light blue
+        (0.0, 0.3, 0.8),      # 3: darker blue
+        (0.3, 0.6, 1.0),      # 4: lighter blue
+        (0.0, 0.2, 0.6),      # 5: deep blue
+        (0.4, 0.7, 1.0),      # 6: pale blue
+        (0.1, 0.4, 0.9),      # 7: medium blue
+        (0.2, 0.5, 0.8),      # 8: steel blue
+        (0.5, 0.8, 1.0),      # 9: sky blue
+        (0.0, 0.5, 0.7),      # 10: teal-blue
         (0.0, 0.0, 1.0),      # 1: pure blue
         (0.2, 0.4, 1.0),      # 2: light blue
         (0.0, 0.3, 0.8),      # 3: darker blue
@@ -415,8 +425,8 @@ def print_distance_summary(distance_grid):
         print("No distance data to summarize")
         return
 
-    # Round to 0.1 mile precision for summary
-    distances_rounded = np.round(distances, 1)
+    # Round to 0.01 mile precision for summary
+    distances_rounded = np.round(distances, 2)
     unique_distances, counts = np.unique(distances_rounded, return_counts=True)
 
     print("\n" + "="*65)
@@ -431,7 +441,7 @@ def print_distance_summary(distance_grid):
     for dist, count in zip(unique_distances, counts):
         cumulative += count
         pct = (cumulative / total) * 100
-        print(f"{dist:>15.1f} | {count:>15} | {pct:>11.1f}%")
+        print(f"{dist:>15.2f} | {count:>15} | {pct:>11.1f}%")
 
     print("-"*65)
     print(f"{'TOTAL':>15} | {total:>15}")
@@ -505,13 +515,16 @@ def render_heatmap(distance_grid, extent, walked_lines=None, unwalked_lines=None
     # Flip vertically so north is up (matches find_largest_unwalked.py pattern)
     distance_grid_flipped = distance_grid[::-1]
 
-    # Build RGB array directly: color each cell based on distance thresholds
-    # white (distance=0) -> green (<1.0) -> orange (1.0-1.8) -> red (>1.8)
+    # Build RGB array with quarter-mile color bands (0.25 mi increments up to 1.5 mi)
     rgb_map = {
-        'white': np.array([1.0, 1.0, 1.0]),      # white for distance=0
-        'green': np.array([0.0, 0.502, 0.0]),    # green for <1.0
-        'orange': np.array([1.0, 0.647, 0.0]),   # orange for 1.0-1.8
-        'red': np.array([1.0, 0.0, 0.0]),        # red for >1.8
+        'white': np.array([1.0, 1.0, 1.0]),              # distance=0 (walked)
+        '0.00-0.25': np.array([0.68, 0.85, 1.0]),       # light blue
+        '0.25-0.50': np.array([0.0, 0.5, 1.0]),         # blue
+        '0.50-0.75': np.array([0.0, 0.75, 1.0]),        # cyan
+        '0.75-1.00': np.array([0.0, 0.75, 0.0]),        # green
+        '1.00-1.25': np.array([1.0, 1.0, 0.0]),         # yellow
+        '1.25-1.50': np.array([1.0, 0.647, 0.0]),       # orange
+        '>1.50': np.array([1.0, 0.0, 0.0]),             # red
     }
 
     # Create mapping of label IDs to colors for top 10 areas
@@ -527,7 +540,7 @@ def render_heatmap(distance_grid, extent, walked_lines=None, unwalked_lines=None
         for j in range(distance_grid.shape[1]):
             dist = distance_grid[i, j]
 
-            # Check if this cell is in one of the top 20 areas and get its color
+            # Check if this cell is in one of the top 10 areas and get its color
             cell_label = labeled_grid[i, j] if labeled_grid is not None else 0
             cell_color = label_to_color.get(cell_label, None)
 
@@ -539,12 +552,20 @@ def render_heatmap(distance_grid, extent, walked_lines=None, unwalked_lines=None
                 rgb_grid[i, j] = np.array([0.95, 0.95, 0.95])
             elif dist == 0:
                 rgb_grid[i, j] = rgb_map['white']
-            elif dist < 1.0:
-                rgb_grid[i, j] = rgb_map['green']
-            elif dist < 1.8:
-                rgb_grid[i, j] = rgb_map['orange']
+            elif dist < 0.25:
+                rgb_grid[i, j] = rgb_map['0.00-0.25']
+            elif dist < 0.50:
+                rgb_grid[i, j] = rgb_map['0.25-0.50']
+            elif dist < 0.75:
+                rgb_grid[i, j] = rgb_map['0.50-0.75']
+            elif dist < 1.00:
+                rgb_grid[i, j] = rgb_map['0.75-1.00']
+            elif dist < 1.25:
+                rgb_grid[i, j] = rgb_map['1.00-1.25']
+            elif dist < 1.50:
+                rgb_grid[i, j] = rgb_map['1.25-1.50']
             else:
-                rgb_grid[i, j] = rgb_map['red']
+                rgb_grid[i, j] = rgb_map['>1.50']
 
     # Flip for display (north up)
     rgb_grid = rgb_grid[::-1]
@@ -613,15 +634,22 @@ def render_heatmap(distance_grid, extent, walked_lines=None, unwalked_lines=None
     # Add town name labels
     add_town_labels(ax, highlight_towns)
 
-    cbar = plt.colorbar(im, ax=ax, label='Euclidean distance (miles)')
+    # Create custom legend for distance bands
+    legend_elements = [
+        Patch(facecolor=[1.0, 1.0, 1.0], edgecolor='black', label='Walked (0 mi)'),
+        Patch(facecolor=[0.68, 0.85, 1.0], edgecolor='black', label='0.00–0.25 mi'),
+        Patch(facecolor=[0.0, 0.5, 1.0], edgecolor='black', label='0.25–0.50 mi'),
+        Patch(facecolor=[0.0, 0.75, 1.0], edgecolor='black', label='0.50–0.75 mi'),
+        Patch(facecolor=[0.0, 0.75, 0.0], edgecolor='black', label='0.75–1.00 mi'),
+        Patch(facecolor=[1.0, 1.0, 0.0], edgecolor='black', label='1.00–1.25 mi'),
+        Patch(facecolor=[1.0, 0.647, 0.0], edgecolor='black', label='1.25–1.50 mi'),
+        Patch(facecolor=[1.0, 0.0, 0.0], edgecolor='black', label='>1.50 mi'),
+    ]
+    ax.legend(handles=legend_elements, loc='upper left', fontsize=9, framealpha=0.95)
 
     ax.set_xlabel('Longitude')
     ax.set_ylabel('Latitude')
     ax.set_title('Andy Walks Connecticut - Coverage Heatmap')
-
-    # Add legend if highlighting towns
-    if highlight_towns:
-        ax.legend(loc='upper right', fontsize=10)
 
     plt.tight_layout()
     plt.savefig(OUTPUT_PNG, dpi=150, bbox_inches='tight')
