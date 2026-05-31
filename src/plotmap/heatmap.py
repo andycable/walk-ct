@@ -1,7 +1,7 @@
 """
 Build a Euclidean distance heatmap from walked coordinates.
 
-Loads all 4-decimal lat/long parquet files, builds a grid, and computes
+Loads all 5-decimal lat/long parquet files, builds a grid, and computes
 the Euclidean distance from each grid cell to the nearest walked location.
 Renders as a heatmap and saves as PNG.
 """
@@ -21,8 +21,8 @@ from matplotlib.collections import LineCollection
 from matplotlib.patches import Circle, Ellipse, Patch
 
 # Configuration
-LAT_STEP = 0.003  # Latitude grid spacing (3 units in 3:4 ratio)
-LON_STEP = 0.004  # Longitude grid spacing (4 units in 3:4 ratio)
+LAT_STEP = 0.0012  # Latitude grid spacing (3:4 lat:lon ratio, ~438 ft cells)
+LON_STEP = 0.0016  # Longitude grid spacing (3:4 lat:lon ratio, ~439 ft cells)
 MILES_PER_DEGREE_LAT = 69.17  # Constant everywhere
 MILES_PER_DEGREE_LON = 52.0   # At CT's latitude (~41-42°N)
 CT_BBOX = {
@@ -154,16 +154,16 @@ def get_town_boundaries():
     return walked_lines, unwalked_lines
 
 
-def round_to_nearest_multiple_of_002(value):
-    """Round to nearest .002 thousandths (.002, .004, .006, .008, etc)"""
-    scaled = value * 1000
-    rounded_scaled = int(np.round(scaled / 2) * 2)
-    return rounded_scaled / 1000
+def round_to_nearest_multiple_of_0001(value):
+    """Round to nearest .0001 (5-digit precision)."""
+    scaled = value * 10000
+    rounded_scaled = int(np.round(scaled))
+    return rounded_scaled / 10000
 
 
 def load_walked_coordinates():
-    """Load all 4-decimal parquet files and combine, then round to even thousandths."""
-    parquet_files = sorted(glob.glob("../../data/lat_long.4.*.parquet"))
+    """Load all 5-decimal parquet files and combine, rounding to 5-digit precision."""
+    parquet_files = sorted(glob.glob("../../data/lat_long.5.*.parquet"))
 
     print(f"Loading {len(parquet_files)} parquet files...")
     dfs = []
@@ -173,9 +173,9 @@ def load_walked_coordinates():
 
     combined = pd.concat(dfs, ignore_index=True)
 
-    # Round to nearest .002 thousandths (.002, .004, .006, .008, etc.)
-    combined['lat'] = combined['lat'].apply(round_to_nearest_multiple_of_002)
-    combined['lon'] = combined['lon'].apply(round_to_nearest_multiple_of_002)
+    # Round to nearest .0001 (5-digit precision)
+    combined['lat'] = combined['lat'].apply(round_to_nearest_multiple_of_0001)
+    combined['lon'] = combined['lon'].apply(round_to_nearest_multiple_of_0001)
 
     combined = combined.drop_duplicates(subset=['lat', 'lon']).reset_index(drop=True)
 
