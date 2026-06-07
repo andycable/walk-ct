@@ -371,34 +371,18 @@ def find_largest_unwalked_areas(distance_grid, ct_bbox=CT_BBOX):
 
     # Sort by area descending
     areas.sort(key=lambda x: x['area_sq_miles'], reverse=True)
-    top_10 = areas[:20]
+    top_10 = areas[:10]
 
-    # Create color palette of 10 blue-ish shades
-    blue_palette = [
-        (0.0, 0.0, 1.0),      # 1: pure blue
-        (0.2, 0.4, 1.0),      # 2: light blue
-        (0.0, 0.3, 0.8),      # 3: darker blue
-        (0.3, 0.6, 1.0),      # 4: lighter blue
-        (0.0, 0.2, 0.6),      # 5: deep blue
-        (0.4, 0.7, 1.0),      # 6: pale blue
-        (0.1, 0.4, 0.9),      # 7: medium blue
-        (0.2, 0.5, 0.8),      # 8: steel blue
-        (0.5, 0.8, 1.0),      # 9: sky blue
-        (0.0, 0.5, 0.7),      # 10: teal-blue
-        (0.0, 0.0, 1.0),      # 1: pure blue
-        (0.2, 0.4, 1.0),      # 2: light blue
-        (0.0, 0.3, 0.8),      # 3: darker blue
-        (0.3, 0.6, 1.0),      # 4: lighter blue
-        (0.0, 0.2, 0.6),      # 5: deep blue
-        (0.4, 0.7, 1.0),      # 6: pale blue
-        (0.1, 0.4, 0.9),      # 7: medium blue
-        (0.2, 0.5, 0.8),      # 8: steel blue
-        (0.5, 0.8, 1.0),      # 9: sky blue
-        (0.0, 0.5, 0.7),      # 10: teal-blue
+    # Palette of 4 primary-ish colors, cycled across the top 10 areas
+    primary_palette = [
+        (0.85, 0.0, 0.0),     # red
+        (0.0, 0.0, 0.85),     # blue
+        (0.0, 0.65, 0.0),     # green
+        (0.6, 0.0, 0.7),      # purple
     ]
 
     for i, area in enumerate(top_10):
-        area['color'] = blue_palette[i]
+        area['color'] = primary_palette[i % len(primary_palette)]
 
     print("\n" + "="*100)
     print("Top 10 Largest Contiguous Unwalked Areas (distance > 0.0 mi)")
@@ -540,7 +524,8 @@ def render_heatmap(distance_grid, extent, walked_lines=None, unwalked_lines=None
         for j in range(distance_grid.shape[1]):
             dist = distance_grid[i, j]
 
-            # Check if this cell is in one of the top 10 areas and get its color
+            # Fill the top-20 unwalked areas FIRST so the solid fill sits at
+            # the bottom layer and all circles/labels drawn later show on top.
             cell_label = labeled_grid[i, j] if labeled_grid is not None else 0
             cell_color = label_to_color.get(cell_label, None)
 
