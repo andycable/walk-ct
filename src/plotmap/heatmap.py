@@ -6,6 +6,7 @@ the Euclidean distance from each grid cell to the nearest walked location.
 Renders as a heatmap and saves as PNG.
 """
 
+import argparse
 import json
 import urllib.request
 import numpy as np
@@ -19,6 +20,7 @@ import glob
 from pathlib import Path
 from matplotlib.collections import LineCollection
 from matplotlib.patches import Circle, Ellipse, Patch
+import squadrats
 
 # Configuration
 LAT_STEP = 0.0012  # Latitude grid spacing (3:4 lat:lon ratio, ~438 ft cells)
@@ -492,7 +494,7 @@ def get_town_boundary_lines(town_names):
     return boundary_lines
 
 
-def render_heatmap(distance_grid, extent, walked_lines=None, unwalked_lines=None, highlight_towns=None, hole_centers=None, top_10_areas=None, labeled_grid=None):
+def render_heatmap(distance_grid, extent, walked_lines=None, unwalked_lines=None, highlight_towns=None, hole_centers=None, top_10_areas=None, labeled_grid=None, squadrat_tiles=None):
     """Render distance grid as heatmap with optional town boundaries and hole centers."""
     fig, ax = plt.subplots(figsize=(15, 12))
 
@@ -616,6 +618,11 @@ def render_heatmap(distance_grid, extent, walked_lines=None, unwalked_lines=None
                     bbox=dict(boxstyle='circle,pad=0.3', facecolor='black', alpha=0.7, edgecolor='white', linewidth=1),
                     zorder=15)
 
+    # Draw unwalked squadrats tile outlines (heatmap shows through)
+    if squadrat_tiles:
+        drawn = squadrats.draw_squadrat_tiles(ax, squadrat_tiles, bbox=extent)
+        print(f"Drew {drawn} unwalked squadrat (z{squadrats.Z}) tile outlines")
+
     # Add town name labels
     add_town_labels(ax, highlight_towns)
 
@@ -630,6 +637,8 @@ def render_heatmap(distance_grid, extent, walked_lines=None, unwalked_lines=None
         Patch(facecolor=[1.0, 0.647, 0.0], edgecolor='black', label='1.25–1.50 mi'),
         Patch(facecolor=[1.0, 0.0, 0.0], edgecolor='black', label='>1.50 mi'),
     ]
+    if squadrat_tiles:
+        legend_elements.append(squadrats.legend_patch())
     ax.legend(handles=legend_elements, loc='upper left', fontsize=9, framealpha=0.95)
 
     ax.set_xlabel('Longitude')
@@ -642,6 +651,16 @@ def render_heatmap(distance_grid, extent, walked_lines=None, unwalked_lines=None
 
 
 def main():
+    parser = argparse.ArgumentParser(
+        description="Build the statewide Connecticut coverage heatmap."
+    )
+    parser.add_argument(
+        "--no-squadrats",
+        action="store_true",
+        help="Do not overlay earned squadrats (z14) tile outlines.",
+    )
+    args = parser.parse_args()
+
     print("Building Euclidean distance heatmap with 3:4 latitude:longitude ratio...")
 
     # Load data
@@ -649,6 +668,15 @@ def main():
 
     # Get CT boundary
     ct_boundary = get_ct_boundary()
+
+    # Compute UNWALKED squadrats (z14): tiles overlapping CT with no walked point
+    squadrat_tiles = None
+    if not args.no_squadrats:
+        squadrat_tiles = squadrats.unwalked_tiles(
+            walked_coords['lat'].to_numpy(), walked_coords['lon'].to_numpy(),
+            ct_boundary,
+        )
+        print(f"{len(squadrat_tiles)} unwalked squadrat (z{squadrats.Z}) tiles in CT")
 
     # Build grid with distances
     distance_grid, extent = build_distance_grid(walked_coords, ct_boundary)
@@ -666,7 +694,7 @@ def main():
     walked_lines, unwalked_lines = get_town_boundaries()
 
     # Render with highlighted top towns, black dots at hole centers, and top 10 unwalked areas
-    render_heatmap(distance_grid, extent, walked_lines, unwalked_lines, top_towns, hole_centers, top_10_areas, labeled_grid)
+    render_heatmap(distance_grid, extent, walked_lines, unwalked_lines, top_towns, hole_centers, top_10_areas, labeled_grid, squadrat_tiles)
 
     print("Done!")
 

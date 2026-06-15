@@ -6,6 +6,7 @@ For each town, creates a distance-based heatmap showing walked coverage
 Saves as towns/{Town_Name}_heatmap.png.
 """
 
+import argparse
 import json
 import numpy as np
 import pandas as pd
@@ -19,6 +20,7 @@ import logging
 from datetime import datetime
 import osmnx as ox
 from matplotlib.patches import Patch
+import squadrats
 
 # Configuration (5x5 grid subdivision)
 LAT_STEP = 0.0006
@@ -72,6 +74,45 @@ def load_walked_coordinates():
 
     print(f"Total unique walked coordinates: {len(combined)}")
     return combined
+
+
+def load_month_coordinates(month_str):
+    """Load the 5-decimal parquet file for a single month (e.g. '2026_06').
+
+    Returns a DataFrame of unique rounded lat/lon for that month, or None if
+    no parquet file exists for the month.
+    """
+    parquet_path = f"../../data/lat_long.5.{month_str}.parquet"
+    if not Path(parquet_path).exists():
+        return None
+
+    df = pd.read_parquet(parquet_path)
+    df['lat'] = df['lat'].apply(round_to_nearest_multiple_of_0001)
+    df['lon'] = df['lon'].apply(round_to_nearest_multiple_of_0001)
+    df = df.drop_duplicates(subset=['lat', 'lon']).reset_index(drop=True)
+
+    print(f"Loaded {len(df)} unique coordinates for {month_str} from {parquet_path}")
+    return df
+
+
+def towns_with_new_activity(month_coords, towns_geojson):
+    """Return the set of town names that contain at least one of month_coords."""
+    if month_coords is None or len(month_coords) == 0:
+        return set()
+
+    lon_pts = month_coords['lon'].to_numpy()
+    lat_pts = month_coords['lat'].to_numpy()
+
+    changed = set()
+    for feature in towns_geojson.get('features', []):
+        name = feature['properties'].get('name', '').strip()
+        if not name or 'not defined' in name.lower():
+            continue
+        geom = shape(feature['geometry'])
+        if contains_xy(geom, lon_pts, lat_pts).any():
+            changed.add(name)
+
+    return changed
 
 
 def build_distance_grid(walked_coords, ct_boundary):
@@ -181,7 +222,7 @@ def get_town_boundary_lines(town_names):
     return boundary_lines
 
 
-def render_town_heatmap(town_grid, extent, town_geom, town_name, output_path, streets=None):
+def render_town_heatmap(town_grid, extent, town_geom, town_name, output_path, streets=None, squadrat_tiles=None):
     """Render a single town's heatmap with quarter-mile color bands and street overlay."""
     fig, ax = plt.subplots(figsize=(12, 12))
 
@@ -251,6 +292,10 @@ def render_town_heatmap(town_grid, extent, town_geom, town_name, output_path, st
             lats = [c[1] for c in coords]
             ax.plot(lons, lats, color='black', linewidth=1.0, alpha=0.8)
 
+    # Draw unwalked squadrats tile outlines, culled to this town's extent
+    if squadrat_tiles:
+        squadrats.draw_squadrat_tiles(ax, squadrat_tiles, bbox=extent)
+
     # Create custom legend for distance bands
     legend_elements = [
         Patch(facecolor=[1.0, 1.0, 1.0], edgecolor='black', label='Walked (0 mi)'),
@@ -262,6 +307,8 @@ def render_town_heatmap(town_grid, extent, town_geom, town_name, output_path, st
         Patch(facecolor=[1.0, 0.647, 0.0], edgecolor='black', label='1.25–1.50 mi'),
         Patch(facecolor=[1.0, 0.0, 0.0], edgecolor='black', label='>1.50 mi'),
     ]
+    if squadrat_tiles:
+        legend_elements.append(squadrats.legend_patch())
     # Place the color key in a single row along the top, above the plot,
     # so it never covers the town.
     ax.legend(handles=legend_elements, loc='lower center',
@@ -279,6 +326,29 @@ def render_town_heatmap(town_grid, extent, town_geom, town_name, output_path, st
 
 
 def main():
+    parser = argparse.ArgumentParser(
+        description="Generate per-town coverage heatmaps for Connecticut."
+    )
+    parser.add_argument(
+        "--current-month",
+        action="store_true",
+        help="Only regenerate heatmaps for towns with new activity in the "
+             "current month's data (lat_long.5.YYYY_MM.parquet).",
+    )
+    parser.add_argument(
+        "--month",
+        metavar="YYYY_MM",
+        default=None,
+        help="With --current-month, use this month instead of today's month "
+             "(e.g. 2026_05).",
+    )
+    parser.add_argument(
+        "--no-squadrats",
+        action="store_true",
+        help="Do not overlay earned squadrats (z14) tile outlines.",
+    )
+    args = parser.parse_args()
+
     # Configure logging
     logging.basicConfig(
         level=logging.INFO,
@@ -294,6 +364,16 @@ def main():
     logger.info("Loading walked coordinates...")
     walked_coords = load_walked_coordinates()
     ct_boundary = get_ct_boundary()
+
+    # Compute UNWALKED squadrats (z14) once: tiles overlapping CT with no walked
+    # point. Drawn per town by culling to each town's extent.
+    squadrat_tiles = None
+    if not args.no_squadrats:
+        squadrat_tiles = squadrats.unwalked_tiles(
+            walked_coords['lat'].to_numpy(), walked_coords['lon'].to_numpy(),
+            ct_boundary,
+        )
+        logger.info(f"{len(squadrat_tiles)} unwalked squadrat (z{squadrats.Z}) tiles in CT")
     logger.info("Building distance grid...")
     distance_grid, full_extent, rows, cols = build_distance_grid(walked_coords, ct_boundary)
     logger.info("Distance grid complete")
@@ -309,11 +389,35 @@ def main():
     with open("ct_towns.geojson", 'r') as f:
         towns_geojson = json.load(f)
 
+    # Optionally restrict to towns with new activity this month.
+    changed_towns = None
+    if args.current_month:
+        month_str = args.month or datetime.now().strftime("%Y_%m")
+        logger.info(f"Filtering to towns with new activity in {month_str}...")
+        month_coords = load_month_coordinates(month_str)
+        if month_coords is None:
+            logger.warning(
+                f"No parquet file found for {month_str}; nothing to regenerate."
+            )
+            print(f"No data file for {month_str}; nothing to do.")
+            return
+        changed_towns = towns_with_new_activity(month_coords, towns_geojson)
+        logger.info(f"{len(changed_towns)} town(s) have new activity in {month_str}")
+        print(f"{len(changed_towns)} town(s) with new activity in {month_str}: "
+              f"{', '.join(sorted(changed_towns)) if changed_towns else '(none)'}")
+        if not changed_towns:
+            return
+
     # Process each town
     town_count = 0
+    rendered_count = 0
     for feature in towns_geojson.get('features', []):
         name = feature['properties'].get('name', '').strip()
         if not name or 'not defined' in name.lower():
+            continue
+
+        # Skip towns without new activity when filtering by current month.
+        if changed_towns is not None and name not in changed_towns:
             continue
 
         town_count += 1
@@ -355,11 +459,12 @@ def main():
 
         print(f"  [{town_count:3d}] {name:30s} -> {filename}_heatmap.png")
 
-        render_town_heatmap(town_grid, town_extent, geom, name, output_path, streets)
+        render_town_heatmap(town_grid, town_extent, geom, name, output_path, streets, squadrat_tiles)
+        rendered_count += 1
         logger.info(f"[{town_count:3d}] Completed {name}")
 
-    logger.info(f"Completed! Generated {town_count} town heatmaps in towns/ folder")
-    print(f"\nGenerated {town_count} town heatmaps in towns/ folder")
+    logger.info(f"Completed! Generated {rendered_count} town heatmaps in towns/ folder")
+    print(f"\nGenerated {rendered_count} town heatmaps in towns/ folder")
 
 
 if __name__ == "__main__":
