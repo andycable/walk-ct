@@ -20,7 +20,7 @@ from fitparse import FitFile
 
 # Config
 YEAR = 2026
-MONTH = 4
+MONTH = 5
 STRAVA_EXPORT_DIR = Path("C:\\export_55533644\\activities")
 METADATA_CSV = Path("C:\\export_55533644\\activities.csv")
 OUTPUT_DIR = Path("C:\\Repo\\walk-ct\\activities")
