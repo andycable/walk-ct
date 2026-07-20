@@ -112,6 +112,10 @@ def find_gerrymanders(dist_grid, present_grid):
             "area": area,
             "row_center": ys.mean(),
             "col_center": xs.mean(),
+            "row_min": int(ys.min()),
+            "row_max": int(ys.max()),
+            "col_min": int(xs.min()),
+            "col_max": int(xs.max()),
         })
 
     regions.sort(key=lambda r: r["area"], reverse=True)
