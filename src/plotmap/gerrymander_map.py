@@ -279,7 +279,7 @@ def main():
 
     # Overlay town boundaries.
     for lons, lats in load_town_lines():
-        ax.plot(lons, lats, color="#333333", linewidth=0.25, alpha=0.7)
+        ax.plot(lons, lats, color="#333333", linewidth=0.125, alpha=0.7)
 
     # Label each town at its centroid.
     for name, lon_c, lat_c in load_town_labels():
