@@ -201,6 +201,58 @@ def load_town_lines():
     return lines
 
 
+def _ring_centroid(ring):
+    """Area-weighted (shoelace) centroid of a polygon ring; falls back to the
+    vertex mean for degenerate rings."""
+    pts = np.asarray(ring, dtype=float)
+    if len(pts) < 3:
+        return pts[:, 0].mean(), pts[:, 1].mean()
+    x, y = pts[:, 0], pts[:, 1]
+    x1, y1 = np.roll(x, -1), np.roll(y, -1)
+    cross = x * y1 - x1 * y
+    area = cross.sum() / 2.0
+    if abs(area) < 1e-12:
+        return x.mean(), y.mean()
+    cx = ((x + x1) * cross).sum() / (6.0 * area)
+    cy = ((y + y1) * cross).sum() / (6.0 * area)
+    return cx, cy
+
+
+def load_town_labels():
+    """Return list of (name, lon, lat) at each CT town's centroid (its largest ring)."""
+    if not Path(TOWNS_GEOJSON).exists():
+        return []
+    with open(TOWNS_GEOJSON, "r") as f:
+        gj = json.load(f)
+    labels = []
+    for feature in gj.get("features", []):
+        name = feature.get("properties", {}).get("name")
+        geom = feature.get("geometry", {})
+        gtype = geom.get("type")
+        coords = geom.get("coordinates", [])
+        if not name or "not defined" in name.lower():
+            continue
+        if gtype == "Polygon":
+            polys = [coords]
+        elif gtype == "MultiPolygon":
+            polys = coords
+        else:
+            continue
+        # Use the exterior ring of the largest-perimeter polygon part.
+        best_ring, best_len = None, -1
+        for poly in polys:
+            if not poly:
+                continue
+            ring = poly[0]
+            if len(ring) > best_len:
+                best_ring, best_len = ring, len(ring)
+        if best_ring is None:
+            continue
+        cx, cy = _ring_centroid(best_ring)
+        labels.append((name, cx, cy))
+    return labels
+
+
 def main():
     dist_grid, present_grid, extent = load_grid()
     rows, cols = dist_grid.shape
@@ -227,7 +279,12 @@ def main():
 
     # Overlay town boundaries.
     for lons, lats in load_town_lines():
-        ax.plot(lons, lats, color="#333333", linewidth=0.5, alpha=0.7)
+        ax.plot(lons, lats, color="#333333", linewidth=0.25, alpha=0.7)
+
+    # Label each town at its centroid.
+    for name, lon_c, lat_c in load_town_labels():
+        ax.text(lon_c, lat_c, name, fontsize=4, ha="center", va="center",
+                color="black", alpha=0.85, clip_on=True)
 
     ax.set_xlim(lon_min, lon_max)
     ax.set_ylim(lat_min, lat_max)

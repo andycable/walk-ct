@@ -20,6 +20,7 @@ from gerrymander_map import (
     build_adjacency,
     color_gerrymanders,
     load_town_lines,
+    load_town_labels,
 )
 
 TOP_N = 20
@@ -48,6 +49,7 @@ def main():
     img = img[::-1]  # flip so north is up
 
     town_lines = load_town_lines()
+    town_labels = load_town_labels()
 
     fig, axes = plt.subplots(N_ROWS, N_COLS, figsize=(16, 20))
     axes = axes.ravel()
@@ -68,10 +70,18 @@ def main():
         pad = max(0.008, span * 0.4)
 
         for lons, lats in town_lines:
-            ax.plot(lons, lats, color="#333333", linewidth=0.6, alpha=0.75)
+            ax.plot(lons, lats, color="#333333", linewidth=0.3, alpha=0.75)
 
-        ax.set_xlim(r_lon_min - pad, r_lon_max + pad)
-        ax.set_ylim(r_lat_min - pad, r_lat_max + pad)
+        x_lo, x_hi = r_lon_min - pad, r_lon_max + pad
+        y_lo, y_hi = r_lat_min - pad, r_lat_max + pad
+        ax.set_xlim(x_lo, x_hi)
+        ax.set_ylim(y_lo, y_hi)
+
+        # Label towns whose centroid falls within this panel's view.
+        for name, lon_t, lat_t in town_labels:
+            if x_lo <= lon_t <= x_hi and y_lo <= lat_t <= y_hi:
+                ax.text(lon_t, lat_t, name, fontsize=6, ha="center", va="center",
+                        color="black", alpha=0.85, clip_on=True)
 
         lat_c = lat_min + r["row_center"] * GRID
         lon_c = lon_min + r["col_center"] * GRID
