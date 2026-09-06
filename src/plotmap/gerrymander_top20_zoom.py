@@ -70,7 +70,7 @@ def main():
         pad = max(0.008, span * 0.4)
 
         for lons, lats in town_lines:
-            ax.plot(lons, lats, color="#333333", linewidth=0.15, alpha=0.75)
+            ax.plot(lons, lats, color="#333333", linewidth=0.075, alpha=0.75)
 
         x_lo, x_hi = r_lon_min - pad, r_lon_max + pad
         y_lo, y_hi = r_lat_min - pad, r_lat_max + pad

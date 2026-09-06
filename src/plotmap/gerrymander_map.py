@@ -34,9 +34,11 @@ TOWNS_GEOJSON = "ct_towns.geojson"
 OUTPUT_PNG = "Gerrymander_Map.png"
 
 GRID = 0.001                 # precision level 3 grid spacing (degrees)
-UNWALKED_THRESHOLD = 0.5     # Dist >= this = unwalked
-TOP_N = 100                  # number of gerrymanders to show
+UNWALKED_THRESHOLD = 0.25    # Dist >= this = unwalked (miles from nearest walked street)
+TOP_N = 50                   # number of gerrymanders to show
 MIN_AREA = 5                 # ignore tiny specks below this many cells
+OPEN_ITERS = 1               # morphological opening passes to sever hairline bridges
+                             # between otherwise-separate pockets before labeling
 
 # The 4 primary colors (RGB 0-255)
 PRIMARY_COLORS = [
@@ -81,6 +83,14 @@ def find_gerrymanders(dist_grid, present_grid):
     """Return labeled grid plus a list of interior unwalked regions, sorted by area desc."""
     unwalked = present_grid & (dist_grid >= UNWALKED_THRESHOLD)
     print(f"Unwalked cells: {unwalked.sum()}")
+
+    # Morphological opening (erode then dilate) severs 1-cell-wide filaments so
+    # that pockets merely touching at hairline pinch points are separated into
+    # distinct regions instead of one sprawling blob.
+    if OPEN_ITERS > 0:
+        opened = ndimage.binary_opening(unwalked, iterations=OPEN_ITERS)
+        print(f"Unwalked cells after opening x{OPEN_ITERS}: {opened.sum()}")
+        unwalked = opened
 
     labeled, num_features = ndimage.label(unwalked)
     print(f"Found {num_features} unwalked regions")
@@ -279,7 +289,7 @@ def main():
 
     # Overlay town boundaries.
     for lons, lats in load_town_lines():
-        ax.plot(lons, lats, color="#333333", linewidth=0.125, alpha=0.7)
+        ax.plot(lons, lats, color="#333333", linewidth=0.0625, alpha=0.7)
 
     # Label each town at its centroid.
     for name, lon_c, lat_c in load_town_labels():
@@ -310,7 +320,7 @@ def main():
     )
 
     plt.tight_layout()
-    plt.savefig(OUTPUT_PNG, dpi=150, bbox_inches="tight", facecolor="white")
+    plt.savefig(OUTPUT_PNG, dpi=150, bbox_inches="tight", pad_inches=0, facecolor="white")
     print(f"Saved {OUTPUT_PNG}")
 
 
