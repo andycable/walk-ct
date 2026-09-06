@@ -21,7 +21,8 @@ and badly skew the width ranking.
 Outputs:
   Gerrymander_Stats.csv           - every pocket, all metrics, all four ranks
   Gerrymander_Metrics_Map.png     - one CT map, each pocket in one color
-  Gerrymander_Metrics_Panels.png  - 2x2, each metric's true top 10
+  Gerrymander_Metrics_Panels.png  - one panel per metric except area, each
+                                    with its true top 10 named by town
 """
 
 import csv
@@ -31,6 +32,7 @@ import numpy as np
 from scipy import ndimage
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import matplotlib.patheffects as pe
 
 from gerrymander_map import (
     GRID,
@@ -369,33 +371,55 @@ def plot_single_map(labeled, regions, present_grid, extent, aspect):
     print(f"Saved {MAP_PNG}")
 
 
-def plot_panels(labeled, regions, present_grid, extent, aspect):
-    """2x2. Each panel shows its metric's true top 10, ranks annotated."""
-    fig, axes = plt.subplots(2, 2, figsize=(20, 16))
+def label_pockets(ax, top):
+    """Mark each pocket with its rank and the town its centroid falls in.
 
-    for ax, (key, title, unit, rgb) in zip(axes.ravel(), METRICS):
+    The rank sits in a filled circle at the centroid and the town name goes
+    just below it, stroked in white so it stays legible over both the colored
+    pocket and the gray land behind it.
+    """
+    for rank, r in enumerate(top, start=1):
+        ax.text(r["centroid_lon"], r["centroid_lat"], str(rank),
+                fontsize=8, fontweight="bold", ha="center", va="center",
+                color="white", clip_on=True, zorder=5,
+                bbox=dict(boxstyle="circle,pad=0.15", facecolor="black",
+                          edgecolor="none", alpha=0.75))
+        if not r["town"]:
+            continue
+        ax.text(r["centroid_lon"], r["centroid_lat"] - 0.016, r["town"],
+                fontsize=8.5, fontweight="bold", ha="center", va="top",
+                color="black", clip_on=True, zorder=5,
+                path_effects=[pe.withStroke(linewidth=2.5, foreground="white")])
+
+
+def plot_panels(labeled, regions, present_grid, extent, aspect):
+    """One full-width panel per metric, each with its own true top 10.
+
+    Area is deliberately absent: it is the priority category on the single map
+    and correlates so strongly with perimeter that its panel added little.
+    """
+    panels = [m for m in METRICS if m[0] != "area"]
+    fig, axes = plt.subplots(len(panels), 1, figsize=(16, 11 * len(panels)))
+
+    for ax, (key, title, unit, rgb) in zip(np.atleast_1d(axes), panels):
         top = sorted(regions, key=lambda r: r[key], reverse=True)[:TOP_K]
         picks = [(r["label"], rgb) for r in top]
         draw_base(ax, render_image(labeled.shape, present_grid, labeled, picks),
                   extent, aspect)
-
-        for rank, r in enumerate(top, start=1):
-            ax.text(r["centroid_lon"], r["centroid_lat"], str(rank),
-                    fontsize=7, fontweight="bold", ha="center", va="center",
-                    color="white", clip_on=True,
-                    bbox=dict(boxstyle="circle,pad=0.15", facecolor="black",
-                              edgecolor="none", alpha=0.75))
+        label_pockets(ax, top)
 
         biggest, smallest = top[0][key], top[-1][key]
         ax.set_title(f"Top {TOP_K} by {title.lower()} - "
                      f"{biggest:.2f} down to {smallest:.2f} {unit}",
-                     fontsize=13, color=tuple(rgb / 255 * 0.75))
+                     fontsize=15, color=tuple(rgb / 255 * 0.75))
         ax.set_xticks([])
         ax.set_yticks([])
 
-    fig.suptitle("Andy Walks Connecticut - Unwalked Pockets Ranked Four Ways",
-                 fontsize=17)
-    plt.tight_layout()
+    fig.suptitle("Andy Walks Connecticut - Unwalked Pockets by Perimeter, "
+                 "Length and Width", fontsize=18, y=0.997, va="top")
+    # A stacked figure is tall enough that the default suptitle slot lands on
+    # top of the first panel's title, so carve the space out explicitly.
+    plt.tight_layout(rect=[0, 0, 1, 1 - 0.55 / fig.get_figheight()])
     plt.savefig(PANELS_PNG, dpi=150, bbox_inches="tight", pad_inches=0.1,
                 facecolor="white")
     plt.close(fig)
