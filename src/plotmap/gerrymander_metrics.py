@@ -2,15 +2,23 @@
 Gerrymander shape metrics for Connecticut.
 
 Measures every interior unwalked pocket ("gerrymander") found by
-gerrymander_map.py and ranks them four ways:
+gerrymander_map.py and ranks them five ways:
 
   area      - square miles of unwalked ground          -> red
   perimeter - miles of boundary around the pocket      -> green
   length    - north-south extent, in miles             -> blue
   width     - east-west extent, in miles               -> yellow
+  diagonal  - longest straight line across it, miles   -> purple
 
 Length and width come from the lat/lon bounding box: length is the N-S
 extent, width the E-W extent.
+
+Diagonal is the true maximum caliper - the longest straight line between
+any two cells in the pocket, taken over its convex hull. It is the one
+extent measure not tied to the axes, so a pocket that sprawls on a
+diagonal reports its real reach instead of having it split between a
+middling length and a middling width. It is always at least as large as
+length or width, and at most the bounding box diagonal.
 
 Everything is reported in miles, never in grid cells. The grid is 0.001
 degrees on both axes, but at Connecticut's latitude that is ~111 m of
@@ -19,7 +27,7 @@ it is wide. Treating cells as square would inflate every E-W width by ~34%
 and badly skew the width ranking.
 
 Outputs:
-  Gerrymander_Stats.csv           - every pocket, all metrics, all four ranks
+  Gerrymander_Stats.csv           - every pocket, all metrics, all five ranks
   Gerrymander_Metrics_Map.png     - one CT map, each pocket in one color
   Gerrymander_Metrics_Panels.png  - one panel per metric except area, each
                                     with its true top 10 named by town
@@ -30,9 +38,11 @@ from pathlib import Path
 
 import numpy as np
 from scipy import ndimage
+from scipy.spatial import ConvexHull
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import matplotlib.patheffects as pe
+from matplotlib.lines import Line2D
 
 from gerrymander_map import (
     GRID,
@@ -61,6 +71,7 @@ METRICS = [
     ("perimeter", "Perimeter", "mi",    np.array([30,  170,  60])),
     ("length",    "Length",    "mi",    np.array([40,   90, 220])),
     ("width",     "Width",     "mi",    np.array([245, 210,  20])),
+    ("diagonal",  "Diagonal",  "mi",    np.array([150,  60, 200])),
 ]
 
 LAND_RGB = np.array([235, 235, 235])   # walked / measured land
@@ -103,6 +114,59 @@ def staircase_perimeter(mask, dx_mi, dy_mi):
     horizontal = (np.count_nonzero(core & ~p[:-2, 1:-1])
                   + np.count_nonzero(core & ~p[2:, 1:-1]))
     return vertical * dy_mi + horizontal * dx_mi
+
+
+def max_caliper(mask, dx_mi, dy_mi):
+    """Longest straight-line distance in miles, and the two points it runs between.
+
+    Returns (miles, (col1, row1), (col2, row2)) with the endpoints in cell
+    units relative to the mask, fractional because they sit on cell corners.
+    The caller turns them into lon/lat so the segment can be drawn.
+
+    Note this is a caliper, not a path: for a concave pocket the segment can
+    leave the pocket and cross walked ground on its way between the two
+    farthest-apart corners. That is what "longest diagonal" means - the
+    longest line the shape spans, not the longest line fitting inside it.
+
+    The farthest-apart pair of points in a set always lies on its convex
+    hull, so the hull is taken first and the exhaustive pairwise search then
+    runs over a few dozen vertices instead of the pocket's tens of thousands
+    of cells. Cell indices are scaled to miles before any distance is taken,
+    for the same reason the rest of this module does: a grid cell is a third
+    taller than it is wide here, and treating it as square would tilt every
+    diagonal toward the E-W axis.
+    """
+    ys, xs = np.nonzero(mask)
+    if len(xs) == 0:
+        return 0.0, None, None
+    # Work in cell units so the endpoints can be mapped straight back onto the
+    # grid; distances get scaled to miles before anything is compared. Hull
+    # membership is unchanged by that scaling - it is an affine map - so the
+    # hull can be taken on the raw indices.
+    pts = np.column_stack([xs, ys]).astype(float)
+    if len(pts) > 2:
+        try:
+            pts = pts[ConvexHull(pts).vertices]
+        except Exception:
+            # Degenerate hull (every cell collinear). The points are already
+            # the answer set, and such a pocket is small by construction.
+            pass
+
+    # A cell is a rectangle, not a point. Length and width already count whole
+    # cells, so the diagonal has to span cell footprints too, or it lands one
+    # cell short on each axis and can come out below the very extents it is
+    # supposed to dominate. Only hull cells can own an extreme corner - for a
+    # fixed corner offset v, conv(S) + v = conv(S + v) - so expanding the hull
+    # vertices alone is exact, and keeps this to a handful of points.
+    ox = np.array([0.0, 1.0, 0.0, 1.0])
+    oy = np.array([0.0, 0.0, 1.0, 1.0])
+    corners = np.column_stack([(pts[:, 0, None] + ox).ravel(),
+                               (pts[:, 1, None] + oy).ravel()])
+    scaled = corners * np.array([dx_mi, dy_mi])
+    diff = scaled[:, None, :] - scaled[None, :, :]
+    d2 = (diff ** 2).sum(-1)
+    i, j = np.unravel_index(np.argmax(d2), d2.shape)
+    return float(np.sqrt(d2[i, j])), tuple(corners[i]), tuple(corners[j])
 
 
 def find_border_labels(labeled, present_grid):
@@ -206,6 +270,11 @@ def measure_gerrymanders(dist_grid, present_grid, extent):
         length = rows_span * dy_mi      # N-S extent
         width = cols_span * dx_mi       # E-W extent
         perimeter = staircase_perimeter(sub, dx_mi, dy_mi)
+        diagonal, diag_a, diag_b = max_caliper(sub, dx_mi, dy_mi)
+        diag_lon1 = lon_min + (col_slice.start + diag_a[0]) * GRID
+        diag_lat1 = lat_min + (row_slice.start + diag_a[1]) * GRID
+        diag_lon2 = lon_min + (col_slice.start + diag_b[0]) * GRID
+        diag_lat2 = lat_min + (row_slice.start + diag_b[1]) * GRID
 
         centroid_lat = lat_min + row_center * GRID
         centroid_lon = lon_min + col_center * GRID
@@ -217,6 +286,11 @@ def measure_gerrymanders(dist_grid, present_grid, extent):
             "length": length,
             "width": width,
             "perimeter": perimeter,
+            "diagonal": diagonal,
+            "diag_lon1": diag_lon1,
+            "diag_lat1": diag_lat1,
+            "diag_lon2": diag_lon2,
+            "diag_lat2": diag_lat2,
             "aspect": length / width if width else float("nan"),
             # Polsby-Popper: 1.0 is a perfect circle, near 0 is a straggly
             # tendril. The literal gerrymandering compactness score.
@@ -262,11 +336,15 @@ def write_stats_csv(regions):
     columns = [
         "gid", "town",
         "area_sq_mi", "area_cells", "length_mi_ns", "width_mi_ew", "perimeter_mi",
+        "diagonal_mi",
+        "diag_lon1", "diag_lat1", "diag_lon2", "diag_lat2",
         "aspect_ratio_ns_ew", "polsby_popper",
         "centroid_lat", "centroid_lon",
         "lat_min", "lat_max", "lon_min", "lon_max",
         "rank_area", "rank_perimeter", "rank_length", "rank_width",
+        "rank_diagonal",
         "top10_area", "top10_perimeter", "top10_length", "top10_width",
+        "top10_diagonal",
         "map_category",
     ]
     ordered = sorted(regions, key=lambda r: r["area"], reverse=True)
@@ -278,13 +356,18 @@ def write_stats_csv(regions):
                 r["label"], r["town"],
                 f"{r['area']:.6f}", r["area_cells"],
                 f"{r['length']:.4f}", f"{r['width']:.4f}", f"{r['perimeter']:.4f}",
+                f"{r['diagonal']:.4f}",
+                f"{r['diag_lon1']:.5f}", f"{r['diag_lat1']:.5f}",
+                f"{r['diag_lon2']:.5f}", f"{r['diag_lat2']:.5f}",
                 f"{r['aspect']:.4f}", f"{r['compactness']:.4f}",
                 f"{r['centroid_lat']:.5f}", f"{r['centroid_lon']:.5f}",
                 f"{r['lat_min']:.4f}", f"{r['lat_max']:.4f}",
                 f"{r['lon_min']:.4f}", f"{r['lon_max']:.4f}",
-                r["rank_area"], r["rank_perimeter"], r["rank_length"], r["rank_width"],
+                r["rank_area"], r["rank_perimeter"], r["rank_length"],
+                r["rank_width"], r["rank_diagonal"],
                 int(r["top10_area"]), int(r["top10_perimeter"]),
                 int(r["top10_length"]), int(r["top10_width"]),
+                int(r["top10_diagonal"]),
                 r["map_category"],
             ])
     print(f"Saved {STATS_CSV} ({len(ordered)} pockets)")
@@ -342,6 +425,7 @@ def plot_single_map(labeled, regions, present_grid, extent, aspect):
     fig, ax = plt.subplots(1, 1, figsize=(16, 13))
     draw_base(ax, render_image(labeled.shape, present_grid, labeled, picks),
               extent, aspect, town_labels=True)
+    draw_diagonals(ax, [r for key, _, _, _ in METRICS for r in by_category[key]])
 
     legend_items = []
     for key, title, unit, rgb in METRICS:
@@ -351,6 +435,8 @@ def plot_single_map(labeled, regions, present_grid, extent, aspect):
             color=rgb / 255,
             label=f"{title} ({unit}) - {shown}{suffix} shown"))
     legend_items.append(mpatches.Patch(color=LAND_RGB / 255, label="Walked land"))
+    legend_items.append(Line2D([0], [0], color="black", linewidth=1.4,
+                               label="Longest diagonal"))
     ax.legend(handles=legend_items, loc="lower right", fontsize=9,
               framealpha=0.95, title="Top 10 by metric")
 
@@ -360,7 +446,7 @@ def plot_single_map(labeled, regions, present_grid, extent, aspect):
     ax.set_title(
         f"Andy Walks Connecticut - Largest Unwalked Pockets by Shape Metric\n"
         f"{total} distinct pockets; overlaps colored by priority "
-        f"area > perimeter > length > width",
+        f"area > perimeter > length > width > diagonal",
         fontsize=14,
     )
 
@@ -369,6 +455,21 @@ def plot_single_map(labeled, regions, present_grid, extent, aspect):
                 facecolor="white")
     plt.close(fig)
     print(f"Saved {MAP_PNG}")
+
+
+def draw_diagonals(ax, regions):
+    """Draw each pocket's longest diagonal as a line across it.
+
+    Stroked in white so a black line stays readable over red, green, blue,
+    yellow and purple pockets alike, and over the gray land it may cross on
+    the way between two corners of a concave pocket.
+    """
+    for r in regions:
+        ax.plot([r["diag_lon1"], r["diag_lon2"]],
+                [r["diag_lat1"], r["diag_lat2"]],
+                color="black", linewidth=1.1, alpha=0.9,
+                solid_capstyle="round", zorder=4, clip_on=True,
+                path_effects=[pe.withStroke(linewidth=2.6, foreground="white")])
 
 
 def label_pockets(ax, top):
@@ -406,6 +507,7 @@ def plot_panels(labeled, regions, present_grid, extent, aspect):
         picks = [(r["label"], rgb) for r in top]
         draw_base(ax, render_image(labeled.shape, present_grid, labeled, picks),
                   extent, aspect)
+        draw_diagonals(ax, top)
         label_pockets(ax, top)
 
         biggest, smallest = top[0][key], top[-1][key]
@@ -416,7 +518,7 @@ def plot_panels(labeled, regions, present_grid, extent, aspect):
         ax.set_yticks([])
 
     fig.suptitle("Andy Walks Connecticut - Unwalked Pockets by Perimeter, "
-                 "Length and Width", fontsize=18, y=0.997, va="top")
+                 "Length, Width and Diagonal", fontsize=18, y=0.997, va="top")
     # A stacked figure is tall enough that the default suptitle slot lands on
     # top of the first panel's title, so carve the space out explicitly.
     plt.tight_layout(rect=[0, 0, 1, 1 - 0.55 / fig.get_figheight()])
