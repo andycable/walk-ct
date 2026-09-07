@@ -15,22 +15,34 @@ import gpxpy
 import gpxpy.gpx
 from fitparse import FitFile
 
-# Target year and month: the current month by default, or an explicit
-# YYYY_MM passed on the command line (used to rebuild an earlier month).
+# Target months: the current month by default, or one or more explicit
+# YYYY_MM arguments. Several months are resolved in a single pass over the
+# export, so backfilling five months costs one scan rather than five.
 EXPLICIT_MONTH = len(sys.argv) > 1
 if EXPLICIT_MONTH:
-    CURRENT_YEAR, CURRENT_MONTH = (int(part) for part in sys.argv[1].split("_"))
+    TARGET_MONTHS = []
+    for arg in sys.argv[1:]:
+        year, month = (int(part) for part in arg.split("_"))
+        if (year, month) not in TARGET_MONTHS:
+            TARGET_MONTHS.append((year, month))
+    TARGET_MONTHS.sort()
 else:
     now = datetime.now()
-    CURRENT_YEAR = now.year
-    CURRENT_MONTH = now.month
+    TARGET_MONTHS = [(now.year, now.month)]
+
+# The previous-month ID cutoff applies only to the default single-month run.
+CURRENT_YEAR, CURRENT_MONTH = TARGET_MONTHS[0]
+TARGET_MONTH_LABEL = ", ".join(f"{y}-{m:02d}" for y, m in TARGET_MONTHS)
 
 # Config
 STRAVA_EXPORT_DIR = Path("C:\\export_55533644\\activities")
 METADATA_CSV = Path("C:\\export_55533644\\activities.csv")
 DOWNLOADS_DIR = Path("C:\\Users\\AndrewCable_kau4dpf\\Downloads")
 OUTPUT_DIR = Path("C:\\Repo\\walk-ct\\activities")
-OUTPUT_FILE = OUTPUT_DIR / f"activities_{CURRENT_YEAR}_{CURRENT_MONTH:02d}.parquet"
+
+
+def output_path(year: int, month: int) -> Path:
+    return OUTPUT_DIR / f"activities_{year}_{month:02d}.parquet"
 
 SEMICIRCLES_TO_DEGREES = (2**31) / 180
 
@@ -185,18 +197,18 @@ def parse_fit_gz(filepath: Path, activity_id: Optional[int], metadata: Dict) -> 
     return points
 
 
-def in_target_month(points: List[Dict]) -> bool:
-    """True if a parsed file belongs to the target month.
+def month_of(points: List[Dict]) -> Optional[tuple]:
+    """The target month a parsed file belongs to, or None if it is not wanted.
 
     Every point from one file shares a single activity_date, so this is one
     check per file -- done before the points are accumulated, which keeps the
     whole archive from being held in memory during a rebuild.
     """
-    activity_date = points[0]["activity_date"]
-    parsed = pd.to_datetime(activity_date, errors="coerce")
+    parsed = pd.to_datetime(points[0]["activity_date"], errors="coerce")
     if pd.isna(parsed):
-        return False
-    return parsed.year == CURRENT_YEAR and parsed.month == CURRENT_MONTH
+        return None
+    key = (parsed.year, parsed.month)
+    return key if key in TARGET_MONTHS else None
 
 
 def get_previous_month_max_activity_id() -> int:
@@ -227,7 +239,7 @@ def main():
     """Extract current month activities."""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    print(f"Target month: {CURRENT_YEAR}-{CURRENT_MONTH:02d}")
+    print(f"Target month(s): {TARGET_MONTH_LABEL}")
     print(f"Loading metadata from {METADATA_CSV}...")
     metadata = load_activity_metadata(METADATA_CSV)
     print(f"  Found {len(metadata)} activities in metadata")
@@ -237,19 +249,19 @@ def main():
     # explicit rebuild -- there the date filter does all the work.
     if EXPLICIT_MONTH:
         min_activity_id = 0
-        print("  Rebuilding an explicit month; scanning all activities")
+        print("  Rebuilding explicit month(s); scanning all activities")
     else:
         min_activity_id = get_previous_month_max_activity_id()
         if min_activity_id > 0:
             print(f"  Only processing activities with ID > {min_activity_id}")
 
-    all_points = []
+    points_by_month = {key: [] for key in TARGET_MONTHS}
     files_processed = 0
     files_skipped = 0
     total_points = 0
 
     # Process Strava export for current month only
-    print(f"\nScanning {STRAVA_EXPORT_DIR} for {CURRENT_YEAR}-{CURRENT_MONTH:02d} activities...")
+    print(f"\nScanning {STRAVA_EXPORT_DIR} for {TARGET_MONTH_LABEL} activities...")
     if STRAVA_EXPORT_DIR.exists():
         for filepath in sorted(STRAVA_EXPORT_DIR.iterdir()):
             if filepath.is_file():
@@ -271,12 +283,14 @@ def main():
 
                 if points:
                     total_points += len(points)
-                    if not in_target_month(points):
+                    key = month_of(points)
+                    if key is None:
                         files_skipped += 1
                         continue
-                    all_points.extend(points)
+                    points_by_month[key].extend(points)
                     files_processed += 1
-                    print(f"  {filepath.name}: {len(points)} points")
+                    print(f"  {filepath.name}: {len(points)} points "
+                          f"({key[0]}-{key[1]:02d})")
     else:
         print(f"  Warning: {STRAVA_EXPORT_DIR} not found")
 
@@ -287,36 +301,29 @@ def main():
 
         if points:
             total_points += len(points)
-            if not in_target_month(points):
+            key = month_of(points)
+            if key is None:
                 files_skipped += 1
                 continue
-            all_points.extend(points)
+            points_by_month[key].extend(points)
             files_processed += 1
-            print(f"  {filepath.name}: {len(points)} points")
+            print(f"  {filepath.name}: {len(points)} points "
+                  f"({key[0]}-{key[1]:02d})")
 
-    # Write parquet file
-    if all_points:
-        df = pd.DataFrame(all_points)
+    # Write one parquet per target month. Each month's points were bucketed
+    # during the scan, so a five-month backfill costs a single pass.
+    print(f"\n=== Summary ===")
+    print(f"Files matched: {files_processed}")
+    print(f"Files outside {TARGET_MONTH_LABEL}: {files_skipped}")
+    print(f"Trackpoints parsed: {total_points:,}")
 
-        # activity_date decides which month a point belongs to. The
-        # activity_id cutoff above is only a speed optimization -- it breaks
-        # whenever the ID chain is interrupted (a gap month, a Downloads-only
-        # month, a manual upload), and without this filter a broken chain
-        # dumps the entire archive into the current month's file.
-        activity_dates = pd.to_datetime(df["activity_date"], errors="coerce")
-        in_month = (
-            (activity_dates.dt.year == CURRENT_YEAR)
-            & (activity_dates.dt.month == CURRENT_MONTH)
-        )
-        dropped = int((~in_month).sum())
-        if dropped:
-            print(f"\nDropping {dropped:,} trackpoints outside "
-                  f"{CURRENT_YEAR}-{CURRENT_MONTH:02d}")
-        df = df[in_month].reset_index(drop=True)
+    for year, month in TARGET_MONTHS:
+        points = points_by_month[(year, month)]
+        if not points:
+            print(f"  {year}-{month:02d}: no activities found, nothing written")
+            continue
 
-        if len(df) == 0:
-            print(f"\nNo points found for {CURRENT_YEAR}-{CURRENT_MONTH:02d}")
-            return
+        df = pd.DataFrame(points)
 
         df = df.astype({
             "activity_id": "Int64",
@@ -339,16 +346,10 @@ def main():
             lambda x: str(x) if pd.notna(x) else None
         )
 
-        df.to_parquet(OUTPUT_FILE, compression="snappy", index=False)
-
-        print(f"\n=== Summary ===")
-        print(f"Files processed: {files_processed}")
-        print(f"Files outside {CURRENT_YEAR}-{CURRENT_MONTH:02d}: {files_skipped}")
-        print(f"Trackpoints parsed: {total_points:,}")
-        print(f"Trackpoints written: {len(df):,}")
-        print(f"Output: {OUTPUT_FILE}")
-    else:
-        print("No points found")
+        out = output_path(year, month)
+        df.to_parquet(out, compression="snappy", index=False)
+        print(f"  {year}-{month:02d}: {len(df):,} trackpoints, "
+              f"{df['activity_id'].nunique()} activities -> {out.name}")
 
 
 if __name__ == "__main__":
