@@ -505,15 +505,26 @@ def label_pockets(ax, top):
 
 
 def plot_panels(labeled, regions, present_grid, extent, aspect):
-    """One full-width panel per metric, each with its own true top 10.
+    """One panel per metric, each with its own true top 10, on a 2-wide grid.
 
     Area is deliberately absent: it is the priority category on the single map
     and correlates so strongly with perimeter that its panel added little.
+
+    Connecticut is much wider than it is tall, so stacking the panels in one
+    column produced a figure several times taller than it was wide. Two
+    columns give a roughly square figure for the same pixel count. Each panel
+    keeps its full 16in width, so every font size tuned against the old layout
+    still reads the same against the map behind it - only the arrangement
+    changes. The grid is sized from the panel count, and any leftover cell is
+    switched off rather than left as empty axes.
     """
     panels = [m for m in METRICS if m[0] != "area"]
-    fig, axes = plt.subplots(len(panels), 1, figsize=(16, 11 * len(panels)))
+    cols = 2 if len(panels) > 1 else 1
+    rows = -(-len(panels) // cols)
+    fig, axes = plt.subplots(rows, cols, figsize=(16 * cols, 11 * rows))
+    flat = np.atleast_1d(axes).ravel()
 
-    for ax, (key, title, unit, rgb) in zip(np.atleast_1d(axes), panels):
+    for ax, (key, title, unit, rgb) in zip(flat, panels):
         top = sorted(regions, key=lambda r: r[key], reverse=True)[:TOP_K]
         picks = [(r["label"], rgb) for r in top]
         draw_base(ax, render_image(labeled.shape, present_grid, labeled, picks),
@@ -528,10 +539,13 @@ def plot_panels(labeled, regions, present_grid, extent, aspect):
         ax.set_xticks([])
         ax.set_yticks([])
 
+    for ax in flat[len(panels):]:
+        ax.axis("off")
+
     fig.suptitle("Andy Walks Connecticut - Unwalked Pockets by Perimeter, "
-                 "Length, Width and Diagonal", fontsize=18, y=0.997, va="top")
-    # A stacked figure is tall enough that the default suptitle slot lands on
-    # top of the first panel's title, so carve the space out explicitly.
+                 "Length, Width and Diagonal", fontsize=22, y=0.997, va="top")
+    # The default suptitle slot lands on top of the first row's panel titles,
+    # so carve the space out explicitly, in figure-relative terms.
     plt.tight_layout(rect=[0, 0, 1, 1 - 0.55 / fig.get_figheight()])
     plt.savefig(PANELS_PNG, dpi=150, bbox_inches="tight", pad_inches=0.1,
                 facecolor="white")
