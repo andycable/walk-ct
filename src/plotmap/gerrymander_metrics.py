@@ -436,7 +436,7 @@ def plot_single_map(labeled, regions, present_grid, extent, aspect):
             label=f"{title} ({unit}) - {shown}{suffix} shown"))
     legend_items.append(mpatches.Patch(color=LAND_RGB / 255, label="Walked land"))
     legend_items.append(Line2D([0], [0], color="black", linewidth=1.4,
-                               label="Longest diagonal"))
+                               label="Longest diagonal (mi)"))
     ax.legend(handles=legend_items, loc="lower right", fontsize=9,
               framealpha=0.95, title="Top 10 by metric")
 
@@ -457,12 +457,17 @@ def plot_single_map(labeled, regions, present_grid, extent, aspect):
     print(f"Saved {MAP_PNG}")
 
 
-def draw_diagonals(ax, regions):
-    """Draw each pocket's longest diagonal as a line across it.
+def draw_diagonals(ax, regions, fontsize=7):
+    """Draw each pocket's longest diagonal as a line, labelled with its miles.
 
     Stroked in white so a black line stays readable over red, green, blue,
     yellow and purple pockets alike, and over the gray land it may cross on
     the way between two corners of a concave pocket.
+
+    The length sits at the midpoint of its own line. That puts it inside the
+    pocket for a convex one and out over land for a straggly one, but always
+    unambiguously on the line it measures, which matters on a map where
+    twenty-one of these can be in view at once.
     """
     for r in regions:
         ax.plot([r["diag_lon1"], r["diag_lon2"]],
@@ -470,6 +475,12 @@ def draw_diagonals(ax, regions):
                 color="black", linewidth=1.1, alpha=0.9,
                 solid_capstyle="round", zorder=4, clip_on=True,
                 path_effects=[pe.withStroke(linewidth=2.6, foreground="white")])
+        ax.text((r["diag_lon1"] + r["diag_lon2"]) / 2,
+                (r["diag_lat1"] + r["diag_lat2"]) / 2,
+                f"{r['diagonal']:.2f}",
+                fontsize=fontsize, fontweight="bold", ha="center", va="center",
+                color="black", clip_on=True, zorder=6,
+                path_effects=[pe.withStroke(linewidth=2.5, foreground="white")])
 
 
 def label_pockets(ax, top):
@@ -507,7 +518,7 @@ def plot_panels(labeled, regions, present_grid, extent, aspect):
         picks = [(r["label"], rgb) for r in top]
         draw_base(ax, render_image(labeled.shape, present_grid, labeled, picks),
                   extent, aspect)
-        draw_diagonals(ax, top)
+        draw_diagonals(ax, top, fontsize=8.5)
         label_pockets(ax, top)
 
         biggest, smallest = top[0][key], top[-1][key]
