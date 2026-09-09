@@ -1,0 +1,171 @@
+Town,Earned,Unwalked,Total,PctEarned
+Vernon,8,7,15,53.3
+Manchester,12,9,21,57.1
+County subdivisions not defined,10,7,17,58.8
+(no town),10,6,16,62.5
+Voluntown,23,10,33,69.7
+South Windsor,15,6,21,71.4
+Sterling,18,6,24,75.0
+Windsor,18,6,24,75.0
+Windsor Locks,6,2,8,75.0
+Canterbury,22,7,29,75.9
+Killingly,32,10,42,76.2
+East Windsor,16,5,21,76.2
+Ellington,20,6,26,76.9
+West Hartford,15,4,19,78.9
+Ledyard,27,7,34,79.4
+Stafford,39,10,49,79.6
+Avon,16,4,20,80.0
+East Granby,13,3,16,81.2
+Winchester,23,5,28,82.1
+Danbury,29,6,35,82.9
+Mansfield,30,6,36,83.3
+Norwich,20,4,24,83.3
+Marlborough,15,3,18,83.3
+Ashford,26,5,31,83.9
+Canaan,21,4,25,84.0
+Granby,32,6,38,84.2
+Sharon,43,8,51,84.3
+Hartford,11,2,13,84.6
+Lisbon,11,2,13,84.6
+Lebanon,35,6,41,85.4
+Franklin,12,2,14,85.7
+Brooklyn,19,3,22,86.4
+Burlington,19,3,22,86.4
+East Lyme,26,4,30,86.7
+Brookfield,13,2,15,86.7
+Old Saybrook,13,2,15,86.7
+Scotland,13,2,15,86.7
+Norfolk,33,5,38,86.8
+North Stonington,40,6,46,87.0
+Barkhamsted,27,4,31,87.1
+Coventry,28,4,32,87.5
+Sherman,21,3,24,87.5
+Bethlehem,14,2,16,87.5
+Wolcott,14,2,16,87.5
+Hartland,29,4,33,87.9
+Salisbury,44,6,50,88.0
+Colchester,37,5,42,88.1
+New Hartford,23,3,26,88.5
+East Haddam,39,5,44,88.6
+Lyme,24,3,27,88.9
+Canton,16,2,18,88.9
+Hampton,16,2,18,88.9
+Newington,8,1,9,88.9
+Warren,18,2,20,90.0
+Sprague,9,1,10,90.0
+Old Lyme,19,2,21,90.5
+Suffield,30,3,33,90.9
+Easton,20,2,22,90.9
+Branford,10,1,11,90.9
+Bristol,21,2,23,91.3
+Farmington,21,2,23,91.3
+Litchfield,43,4,47,91.5
+Andover,11,1,12,91.7
+Harwinton,24,2,26,92.3
+Enfield,25,2,27,92.6
+Simsbury,25,2,27,92.6
+Kent,38,3,41,92.7
+Chester,13,1,14,92.9
+Hebron,27,2,29,93.1
+Tolland,27,2,29,93.1
+Westbrook,14,1,15,93.3
+Torrington,30,2,32,93.8
+Chaplin,15,1,16,93.8
+East Hartford,15,1,16,93.8
+Greenwich,46,3,49,93.9
+Ridgefield,31,2,33,93.9
+Norwalk,16,1,17,94.1
+Cornwall,34,2,36,94.4
+Goshen,34,2,36,94.4
+Pomfret,34,2,36,94.4
+Plymouth,17,1,18,94.4
+Eastford,20,1,21,95.2
+New Fairfield,20,1,21,95.2
+Salem,20,1,21,95.2
+Preston,21,1,22,95.5
+Wilton,21,1,22,95.5
+Somers,22,1,23,95.7
+Willington,22,1,23,95.7
+Cheshire,25,1,26,96.2
+Colebrook,26,1,27,96.3
+Woodbury,26,1,27,96.3
+Union,27,1,28,96.4
+Griswold,28,1,29,96.6
+Waterford,29,1,30,96.7
+Stamford,32,1,33,97.0
+Washington,32,1,33,97.0
+Haddam,34,1,35,97.1
+Montville,34,1,35,97.1
+Plainfield,33,1,34,97.1
+Stonington,35,1,36,97.2
+Glastonbury,38,1,39,97.4
+Newtown,43,1,44,97.7
+Guilford,44,1,45,97.8
+Woodstock,45,1,46,97.8
+New Milford,47,1,48,97.9
+Ansonia,5,0,5,100.0
+Beacon Falls,7,0,7,100.0
+Berlin,23,0,23,100.0
+Bethany,15,0,15,100.0
+Bethel,14,0,14,100.0
+Bloomfield,22,0,22,100.0
+Bolton,11,0,11,100.0
+Bozrah,17,0,17,100.0
+Bridgeport,16,0,16,100.0
+Bridgewater,13,0,13,100.0
+Clinton,16,0,16,100.0
+Columbia,17,0,17,100.0
+Cromwell,11,0,11,100.0
+Darien,10,0,10,100.0
+Deep River,11,0,11,100.0
+Derby,4,0,4,100.0
+Durham,19,0,19,100.0
+East Hampton,28,0,28,100.0
+East Haven,7,0,7,100.0
+Essex,9,0,9,100.0
+Fairfield,22,0,22,100.0
+Groton,26,0,26,100.0
+Hamden,25,0,25,100.0
+Killingworth,32,0,32,100.0
+Meriden,16,0,16,100.0
+Middlebury,15,0,15,100.0
+Middlefield,9,0,9,100.0
+Middletown,35,0,35,100.0
+Milford,17,0,17,100.0
+Monroe,20,0,20,100.0
+Morris,11,0,11,100.0
+Naugatuck,13,0,13,100.0
+New Britain,10,0,10,100.0
+New Canaan,18,0,18,100.0
+New Haven,15,0,15,100.0
+New London,4,0,4,100.0
+North Branford,18,0,18,100.0
+North Canaan,16,0,16,100.0
+North Haven,18,0,18,100.0
+Orange,13,0,13,100.0
+Oxford,28,0,28,100.0
+Plainville,6,0,6,100.0
+Portland,19,0,19,100.0
+Prospect,11,0,11,100.0
+Putnam,18,0,18,100.0
+Redding,25,0,25,100.0
+Rocky Hill,11,0,11,100.0
+Roxbury,21,0,21,100.0
+Seymour,12,0,12,100.0
+Shelton,26,0,26,100.0
+Southbury,30,0,30,100.0
+Southington,30,0,30,100.0
+Stratford,17,0,17,100.0
+Thomaston,9,0,9,100.0
+Thompson,45,0,45,100.0
+Trumbull,17,0,17,100.0
+Wallingford,31,0,31,100.0
+Waterbury,22,0,22,100.0
+Watertown,24,0,24,100.0
+West Haven,10,0,10,100.0
+Weston,17,0,17,100.0
+Westport,19,0,19,100.0
+Wethersfield,9,0,9,100.0
+Windham,23,0,23,100.0
+Woodbridge,14,0,14,100.0

@@ -9,5 +9,8 @@ REM gerrymander_metrics.py reads Distance_3_ct.csv and will otherwise
 REM draw pockets from a stale snapshot.
 python distance_from_parquet.py
 python gerrymander_metrics.py
+python export_squadrats.py
+python squadrats_map.py
 
 : heatmap.png
+: squadrats_map.html
