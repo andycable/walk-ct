@@ -2,3 +2,11 @@ cache/
 __pycache__/
 Commit.txt
 file_changes.txt
+
+# PyInstaller build output for convert.fit_to_gpx (44MB, regenerated on build)
+src/convert/build/
+
+# Scratch files left behind by one-off runs, not repo content
+src/extraction.log
+src/sorted_data.tmp
+temp_read_parquet.R
