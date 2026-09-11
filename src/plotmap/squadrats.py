@@ -28,6 +28,11 @@ SQUADRAT_COLOR = "#d000d0"  # magenta, stands out over the heatmap palette
 SQUADRAT_LINEWIDTH = 1.5
 SQUADRAT_ALPHA = 0.7
 
+# Fill styling for contiguous regions of 2+ unwalked tiles.
+CLUSTER_FILL_COLOR = "#d000d0"  # same hue as the outlines, translucent fill
+CLUSTER_FILL_ALPHA = 0.22       # low enough that the heatmap reads through
+CLUSTER_LABEL_FONTSIZE = 7
+
 
 def earned_tiles(lats, lons, z=Z):
     """Return the set of (x, y) zoom-z tiles containing any of the given points."""
@@ -120,6 +125,95 @@ def draw_squadrat_tiles(ax, tiles, z=Z, bbox=None,
     return len(patches)
 
 
-def legend_patch(label="Unwalked squadrat (z14)"):
+def legend_patch(label="Unwalked tile"):
     """A legend handle matching the squadrat outline style."""
     return Patch(facecolor='none', edgecolor=SQUADRAT_COLOR, label=label)
+
+
+def cluster_tiles(tiles, min_size=2):
+    """Group tiles into contiguous (edge-connected) regions.
+
+    Tiles touching only at a corner are not contiguous. Returns a list of tile
+    lists, largest region first, keeping only regions of at least min_size
+    tiles.
+    """
+    remaining = set(tiles)
+    regions = []
+
+    while remaining:
+        region = [remaining.pop()]
+        stack = list(region)
+        while stack:
+            x, y = stack.pop()
+            for neighbor in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                if neighbor in remaining:
+                    remaining.remove(neighbor)
+                    region.append(neighbor)
+                    stack.append(neighbor)
+
+        if len(region) >= min_size:
+            regions.append(region)
+
+    regions.sort(key=len, reverse=True)
+    return regions
+
+
+def draw_squadrat_clusters(ax, regions, z=Z, bbox=None,
+                           facecolor=CLUSTER_FILL_COLOR, alpha=CLUSTER_FILL_ALPHA,
+                           fontsize=CLUSTER_LABEL_FONTSIZE, zorder=19):
+    """Fill each contiguous region and label it with its tile count.
+
+    Args:
+        ax: matplotlib axes.
+        regions: iterable of tile lists (e.g. from cluster_tiles()).
+        bbox: optional (lon_min, lon_max, lat_min, lat_max) to cull regions
+              that fall entirely outside the visible area.
+
+    Returns the number of regions drawn.
+    """
+    patches = []
+    drawn = 0
+
+    for region in regions:
+        boxes = [tile_bounds(x, y, z) for (x, y) in region]
+
+        if bbox is not None:
+            lon_min, lon_max, lat_min, lat_max = bbox
+            if all(lon_e < lon_min or lon_w > lon_max or lat_n < lat_min or lat_s > lat_max
+                   for lon_w, lon_e, lat_s, lat_n in boxes):
+                continue
+
+        for lon_w, lon_e, lat_s, lat_n in boxes:
+            patches.append(Rectangle((lon_w, lat_s), lon_e - lon_w, lat_n - lat_s))
+
+        # Place the count on the tile nearest the region centroid rather than at
+        # the centroid itself -- for an L- or U-shaped region the centroid can
+        # land on tiles that are not part of it.
+        centers = [((lon_w + lon_e) / 2.0, (lat_s + lat_n) / 2.0)
+                   for lon_w, lon_e, lat_s, lat_n in boxes]
+        cx = sum(c[0] for c in centers) / len(centers)
+        cy = sum(c[1] for c in centers) / len(centers)
+        label_lon, label_lat = min(
+            centers, key=lambda c: (c[0] - cx) ** 2 + (c[1] - cy) ** 2
+        )
+
+        ax.text(label_lon, label_lat, str(len(region)), fontsize=fontsize,
+                color='black', weight='bold', ha='center', va='center',
+                bbox=dict(boxstyle='round,pad=0.15', facecolor='white',
+                          alpha=0.75, edgecolor='none'),
+                zorder=zorder + 2)
+        drawn += 1
+
+    if patches:
+        ax.add_collection(PatchCollection(
+            patches, facecolor=facecolor, edgecolor='none',
+            alpha=alpha, zorder=zorder,
+        ))
+
+    return drawn
+
+
+def cluster_legend_patch(label="Contiguous unwalked (count)"):
+    """A legend handle matching the cluster fill style."""
+    return Patch(facecolor=CLUSTER_FILL_COLOR, alpha=CLUSTER_FILL_ALPHA,
+                 edgecolor=SQUADRAT_COLOR, label=label)

@@ -618,8 +618,13 @@ def render_heatmap(distance_grid, extent, walked_lines=None, unwalked_lines=None
                     bbox=dict(boxstyle='circle,pad=0.3', facecolor='black', alpha=0.7, edgecolor='white', linewidth=1),
                     zorder=15)
 
-    # Draw unwalked squadrats tile outlines (heatmap shows through)
+    # Fill contiguous regions of 2+ unwalked squadrats and label the tile count,
+    # then draw every tile outline on top (heatmap shows through both)
     if squadrat_tiles:
+        regions = squadrats.cluster_tiles(squadrat_tiles, min_size=2)
+        filled = squadrats.draw_squadrat_clusters(ax, regions, bbox=extent)
+        print(f"Filled {filled} contiguous unwalked squadrat regions of 2+ tiles "
+              f"(largest: {len(regions[0]) if regions else 0} tiles)")
         drawn = squadrats.draw_squadrat_tiles(ax, squadrat_tiles, bbox=extent)
         print(f"Drew {drawn} unwalked squadrat (z{squadrats.Z}) tile outlines")
 
@@ -639,6 +644,7 @@ def render_heatmap(distance_grid, extent, walked_lines=None, unwalked_lines=None
     ]
     if squadrat_tiles:
         legend_elements.append(squadrats.legend_patch())
+        legend_elements.append(squadrats.cluster_legend_patch())
     ax.legend(handles=legend_elements, loc='upper left', fontsize=9, framealpha=0.95)
 
     ax.set_xlabel('Longitude')
