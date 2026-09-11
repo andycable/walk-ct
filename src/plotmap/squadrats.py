@@ -213,7 +213,7 @@ def draw_squadrat_clusters(ax, regions, z=Z, bbox=None,
     return drawn
 
 
-def cluster_legend_patch(label="Contiguous unwalked (count)"):
+def cluster_legend_patch(label="Unwalked grid"):
     """A legend handle matching the cluster fill style."""
     return Patch(facecolor=CLUSTER_FILL_COLOR, alpha=CLUSTER_FILL_ALPHA,
                  edgecolor=SQUADRAT_COLOR, label=label)
