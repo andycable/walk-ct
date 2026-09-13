@@ -33,6 +33,8 @@ import json
 from pathlib import Path
 
 import numpy as np
+
+import ct_outline
 import pandas as pd
 from matplotlib.path import Path as MplPath
 from scipy.spatial import cKDTree
@@ -99,32 +101,20 @@ def load_walked(until=None, precision=5):
 
 
 def load_boundary(which):
-    """Connecticut outline as a list of (exterior, holes) ring arrays."""
-    if which == "towns":
-        # Union of the 169 town polygons - a far truer outline than the
-        # 16-point state polygon, which straight-lines the whole coast.
-        from shapely.geometry import shape
-        from shapely.ops import unary_union
+    """Connecticut outline as a list of (exterior, holes) ring arrays.
 
-        with open(TOWNS_GEOJSON, "r") as f:
-            gj = json.load(f)
-        geoms = [shape(feat["geometry"]) for feat in gj.get("features", [])
-                 if feat.get("geometry")]
-        merged = unary_union(geoms)
-        polys = list(getattr(merged, "geoms", [merged]))
-        rings = [(np.asarray(p.exterior.coords),
-                  [np.asarray(r.coords) for r in p.interiors]) for p in polys]
-        print(f"Boundary: union of {len(geoms)} towns -> {len(polys)} part(s), "
-              f"{sum(len(e) for e, _ in rings)} vertices")
-        return rings
+    The outline itself comes from ct_outline, so this script, heatmap.py and
+    the squadrat exports all clip to the same Connecticut. It used to read the
+    16-vertex ct_boundary.json, and its own "towns" option unioned every
+    feature in ct_towns.geojson - Long Island Sound fillers included.
+    """
+    geom = ct_outline.ct_outline(which)
 
-    with open(STATE_BOUNDARY, "r") as f:
-        gj = json.load(f)
-    geom = gj.get("geometry", gj)
-    coords = geom["coordinates"]
-    parts = [coords] if geom["type"] == "Polygon" else coords
-    rings = [(np.asarray(p[0]), [np.asarray(h) for h in p[1:]]) for p in parts]
-    print(f"Boundary: {STATE_BOUNDARY} -> {len(parts)} part(s), "
+    polys = list(getattr(geom, "geoms", [geom]))
+    rings = [(np.asarray(p.exterior.coords),
+              [np.asarray(r.coords) for r in p.interiors]) for p in polys]
+
+    print(f"Boundary: {which} outline -> {len(polys)} part(s), "
           f"{sum(len(e) for e, _ in rings)} vertices")
     return rings
 
@@ -182,9 +172,12 @@ def main():
     ap.add_argument("--precision", type=int, choices=(3, 5), default=5,
                     help="5 = coordinates as recorded (default); "
                          "3 = snapped to the 0.001 lattice, as the SQL did")
-    ap.add_argument("--boundary", choices=("state", "towns"), default="state",
-                    help="state = ct_boundary.json (16 points, matches the "
-                         "old grid); towns = union of ct_towns.geojson")
+    ap.add_argument("--boundary", choices=("shoreline", "towns", "state"),
+                    default="shoreline",
+                    help="shoreline = town outlines clipped to the coast "
+                         "(default, matches heatmap.py); towns = adds each "
+                         "coastal town's water jurisdiction; state = the old "
+                         "16-point outline")
     ap.add_argument("--out", default=DEFAULT_OUT)
     args = ap.parse_args()
 

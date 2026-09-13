@@ -17,6 +17,8 @@ Output: Gerrymander_Map.png
 """
 
 import json
+
+import ct_outline
 from pathlib import Path
 
 import numpy as np
@@ -30,7 +32,10 @@ import matplotlib.patches as mpatches
 # Config
 # ---------------------------------------------------------------------------
 DISTANCE_CSV = "Distance_3_ct.csv"
-TOWNS_GEOJSON = "ct_towns.geojson"
+# The same outlines the distance grid is clipped to. Drawing the
+# water-inclusive ct_towns.geojson here instead ran the town borders out
+# into Long Island Sound, past the edge of the grid they annotate.
+TOWNS_GEOJSON = ct_outline.SHORELINE_GEOJSON
 OUTPUT_PNG = "Gerrymander_Map.png"
 
 GRID = 0.001                 # precision level 3 grid spacing (degrees)

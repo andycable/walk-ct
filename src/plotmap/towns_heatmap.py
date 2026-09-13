@@ -22,6 +22,7 @@ import osmnx as ox
 from matplotlib.patches import Patch
 import squadrats
 
+import ct_outline
 # Configuration (5x5 grid subdivision)
 LAT_STEP = 0.0006
 LON_STEP = 0.0008
@@ -38,13 +39,15 @@ BOUNDARY_CACHE = "ct_boundary.json"
 TOWNS_CACHE = "ct_towns.json"
 
 
-def get_ct_boundary():
-    """Load cached CT state boundary as shapely polygon."""
-    if Path(BOUNDARY_CACHE).exists():
-        with open(BOUNDARY_CACHE, 'r') as f:
-            geom = json.load(f)
-        return shape(geom)
-    raise FileNotFoundError(f"{BOUNDARY_CACHE} not found")
+def get_ct_boundary(source="shoreline"):
+    """The Connecticut outline used to clip the grid and the squadrat tiles.
+
+    Defaults to the shoreline-clipped town outlines, matching heatmap.py. This
+    used to read the 16-vertex ct_boundary.json, whose straight-line coast cut
+    inland of the real shore in places - which mattered most for exactly the
+    coastal towns this script draws one by one.
+    """
+    return ct_outline.ct_outline(source)
 
 
 def round_to_nearest_multiple_of_0001(value):
