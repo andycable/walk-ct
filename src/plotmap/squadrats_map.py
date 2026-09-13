@@ -18,8 +18,14 @@ import json
 
 from shapely.geometry import shape, mapping
 
+import ct_outline
+
 GEOJSON_IN = "squadrats_z14.geojson"
-TOWNS_GEOJSON = "ct_towns.geojson"
+
+# The same outlines the tiles were clipped to. Drawing the water-inclusive
+# ct_towns.geojson here instead left the town borders hanging out in Long
+# Island Sound while the tiles stopped at the shore.
+TOWNS_GEOJSON = ct_outline.SHORELINE_GEOJSON
 TOWN_CSV = "squadrats_by_town.csv"
 OUTPUT_HTML = "squadrats_map.html"
 

@@ -36,14 +36,17 @@ OUTPUT_CSV = "squadrats_by_town.csv"
 NO_TOWN = "(no town)"
 
 
-def load_towns(path=TOWNS_GEOJSON):
-    """Return [(town_name, polygon), ...] for the 169 real towns.
+def load_towns(source="shoreline"):
+    """Return [(town_name, polygon), ...] for the 169 towns.
 
-    The Long Island Sound filler polygons are excluded by ct_outline; keeping
-    them used to pull 325 tiles of open water into --boundary towns.
+    Labels come from whichever file the tiles were clipped to. Labelling with
+    a different file than the clip leaves tiles that belong to no town at all:
+    clipping to the shoreline while labelling from ct_towns.geojson stranded 14
+    of them in "(no town)".
     """
-    towns = ct_outline.town_polygons(path)
-    print(f"Loaded {len(towns)} town boundaries from {path}")
+    towns = (ct_outline.shoreline_polygons() if source == "shoreline"
+             else ct_outline.town_polygons())
+    print(f"Loaded {len(towns)} town boundaries for the {source} outline")
     return towns
 
 
@@ -151,7 +154,7 @@ def main():
     )
     args = parser.parse_args()
 
-    towns = load_towns()
+    towns = load_towns(args.boundary)
     geom = ct_outline.ct_outline(args.boundary)
     print(f"Clipping to the {args.boundary} outline")
 
