@@ -83,14 +83,28 @@ var ACCENT = "#d000d0";
 
 var map = L.map('map').setView([41.6, -72.7], 9);
 
-var osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
-}).addTo(map);
+// Basemap tiles come from CARTO, not tile.openstreetmap.org. OSM's
+// volunteer servers block this map: opened from disk it is a file:// page,
+// which sends no Referer and an Origin of null, so their operators cannot
+// identify the app and refuse it under the tile usage policy. The data is
+// still OpenStreetMap's and is credited as such.
+var OSM_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+var CARTO_ATTR = OSM_ATTR + ' &copy; <a href="https://carto.com/attributions">CARTO</a>';
+
+var streets = L.tileLayer(
+  'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+  { maxZoom: 20, subdomains: 'abcd', attribution: CARTO_ATTR }
+).addTo(map);
+var light = L.tileLayer(
+  'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+  { maxZoom: 20, subdomains: 'abcd', attribution: CARTO_ATTR }
+);
 var sat = L.tileLayer(
   'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
   { maxZoom: 19, attribution: 'Imagery &copy; Esri' }
 );
-L.control.layers({ 'Streets': osm, 'Satellite': sat }, null, { position: 'topright' }).addTo(map);
+L.control.layers({ 'Streets': streets, 'Light': light, 'Satellite': sat },
+                 null, { position: 'topright' }).addTo(map);
 
 function popupHtml(p) {
   var gmaps = 'https://www.google.com/maps?q=' + p.center_lat + ',' + p.center_lon;
