@@ -126,6 +126,39 @@ def tile_at(lat, lon, z=Z):
     return next(iter(earned_tiles([lat], [lon], z)))
 
 
+def border_tiles(geom, z=Z, full=0.999999):
+    """Return {(x, y): fraction_inside} for tiles that straddle geom's edge.
+
+    A straddler is a tile that is partly inside Connecticut and partly outside
+    it -- the tiles where "is this square in CT?" has no automatic answer and a
+    human ruling in tile_votes.csv may be needed.
+
+    Unlike region_tiles(), which samples points, this measures each tile's
+    overlap exactly, so tiles that only clip a corner of the boundary are not
+    missed. Tiles at or above `full` are counted as wholly inside and omitted,
+    as are tiles with no overlap at all.
+    """
+    from shapely.geometry import box
+
+    minx, miny, maxx, maxy = geom.bounds
+    x_lo, y_lo = tile_at(maxy, minx, z)
+    x_hi, y_hi = tile_at(miny, maxx, z)
+
+    straddlers = {}
+    for x in range(x_lo, x_hi + 1):
+        for y in range(y_lo, y_hi + 1):
+            lon_w, lon_e, lat_s, lat_n = tile_bounds(x, y, z)
+            rect = box(lon_w, lat_s, lon_e, lat_n)
+            overlap = rect.intersection(geom).area
+            if overlap <= 0:
+                continue
+            fraction = overlap / rect.area
+            if fraction < full:
+                straddlers[(x, y)] = fraction
+
+    return straddlers
+
+
 def _tile_lat(y, n):
     """North-edge latitude (degrees) of tile row y at 2^z = n."""
     lat_rad = np.arctan(np.sinh(np.pi * (1.0 - 2.0 * y / n)))

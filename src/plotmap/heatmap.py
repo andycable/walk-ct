@@ -21,6 +21,7 @@ from pathlib import Path
 from matplotlib.collections import LineCollection
 from matplotlib.patches import Circle, Ellipse, Patch
 import squadrats
+import ct_outline
 
 # Configuration
 LAT_STEP = 0.0012  # Latitude grid spacing (3:4 lat:lon ratio, ~438 ft cells)
@@ -51,14 +52,21 @@ TOWN_BOUNDARIES_CSV = "town_boundaries.csv"
 OUTPUT_PNG = "heatmap.png"
 
 
-def get_ct_boundary():
-    """Download or load cached CT state boundary as shapely polygon."""
-    if Path(BOUNDARY_CACHE).exists():
-        print(f"Loading cached boundary from {BOUNDARY_CACHE}")
-        with open(BOUNDARY_CACHE, 'r') as f:
-            geom = json.load(f)
-        return shape(geom)
+def get_ct_boundary(source="shoreline"):
+    """The Connecticut outline used to clip the grid and the squadrat tiles.
 
+    Defaults to the shoreline-clipped town outlines. The old 16-vertex state
+    polygon straight-lines the entire coast; against the real outlines it
+    wrongly claimed 31 tiles sitting in no Connecticut town and hid 127 that
+    do. See ct_outline for the other choices.
+    """
+    geom = ct_outline.ct_outline(source)
+    print(f"Boundary: {source} outline, {geom.geom_type}, area {geom.area:.4f} deg^2")
+    return geom
+
+
+def download_state_boundary():
+    """Refresh ct_boundary.json from the PublicaMundi us-states file."""
     print("Downloading US states GeoJSON...")
     with urllib.request.urlopen(BOUNDARY_URL) as resp:
         data = json.loads(resp.read().decode())
@@ -661,6 +669,13 @@ def main():
         description="Build the statewide Connecticut coverage heatmap."
     )
     parser.add_argument(
+        "--boundary",
+        choices=["shoreline", "towns", "state"],
+        default="shoreline",
+        help="Outline to clip to: shoreline (default, land only), towns (adds "
+             "each coastal town's water jurisdiction) or state (the old maps).",
+    )
+    parser.add_argument(
         "--no-squadrats",
         action="store_true",
         help="Do not overlay earned squadrats (z14) tile outlines.",
@@ -673,7 +688,7 @@ def main():
     walked_coords = load_walked_coordinates()
 
     # Get CT boundary
-    ct_boundary = get_ct_boundary()
+    ct_boundary = get_ct_boundary(args.boundary)
 
     # Compute UNWALKED squadrats (z14): tiles overlapping CT with no walked point
     squadrat_tiles = None

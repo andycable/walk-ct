@@ -21,11 +21,11 @@ import json
 from collections import Counter
 
 from shapely.geometry import shape, box
-from shapely.ops import unary_union
 from shapely.strtree import STRtree
 
+import ct_outline
 import squadrats
-from heatmap import load_walked_coordinates, get_ct_boundary
+from heatmap import load_walked_coordinates
 
 TOWNS_GEOJSON = "ct_towns.geojson"
 OUTPUT_GEOJSON = "squadrats_z14.geojson"
@@ -37,17 +37,12 @@ NO_TOWN = "(no town)"
 
 
 def load_towns(path=TOWNS_GEOJSON):
-    """Return [(town_name, polygon), ...] from the town boundary GeoJSON."""
-    with open(path, "r") as f:
-        fc = json.load(f)
+    """Return [(town_name, polygon), ...] for the 169 real towns.
 
-    towns = []
-    for feat in fc["features"]:
-        name = feat["properties"].get("name")
-        if not name:
-            continue
-        towns.append((name, shape(feat["geometry"])))
-
+    The Long Island Sound filler polygons are excluded by ct_outline; keeping
+    them used to pull 325 tiles of open water into --boundary towns.
+    """
+    towns = ct_outline.town_polygons(path)
     print(f"Loaded {len(towns)} town boundaries from {path}")
     return towns
 
@@ -140,10 +135,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--boundary",
-        choices=["state", "towns"],
-        default="state",
-        help="Clip tiles to the state outline (matches heatmap.py, default) "
-             "or to the union of the town polygons (more precise coastline).",
+        choices=["shoreline", "towns", "state"],
+        default="shoreline",
+        help="Clip tiles to the shoreline-clipped town outlines (default, "
+             "matches heatmap.py), the water-inclusive town union, or the old "
+             "16-vertex state outline.",
     )
     parser.add_argument(
         "--include-earned",
@@ -156,12 +152,8 @@ def main():
     args = parser.parse_args()
 
     towns = load_towns()
-
-    if args.boundary == "towns":
-        geom = unary_union([g for _, g in towns])
-        print("Clipping to the union of town boundaries")
-    else:
-        geom = get_ct_boundary()
+    geom = ct_outline.ct_outline(args.boundary)
+    print(f"Clipping to the {args.boundary} outline")
 
     walked = load_walked_coordinates()
 
