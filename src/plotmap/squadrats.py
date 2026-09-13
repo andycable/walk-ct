@@ -15,6 +15,9 @@ that still overlap a region (e.g. the CT boundary or a single town), and draws
 tile outlines onto a matplotlib axes so the heatmap colors show through.
 """
 
+import csv
+import os
+
 import numpy as np
 from shapely import contains_xy
 from matplotlib.patches import Rectangle, Patch
@@ -33,6 +36,10 @@ CLUSTER_FILL_COLOR = "#d000d0"  # same hue as the outlines, translucent fill
 CLUSTER_FILL_ALPHA = 0.22       # low enough that the heatmap reads through
 CLUSTER_LABEL_FONTSIZE = 7
 
+# Subjective per-tile include/exclude decisions, resolved next to this module
+# so it is found no matter what the working directory is.
+VOTES_CSV = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tile_votes.csv")
+
 
 def earned_tiles(lats, lons, z=Z):
     """Return the set of (x, y) zoom-z tiles containing any of the given points."""
@@ -47,12 +54,16 @@ def earned_tiles(lats, lons, z=Z):
     return set(zip(x.tolist(), y.tolist()))
 
 
-def region_tiles(geom, z=Z, sample_step_deg=0.004):
+def region_tiles(geom, z=Z, sample_step_deg=0.004, votes=None):
     """Return the set of (x, y) z-tiles that overlap the given polygon.
 
     Overlap is approximated by densely sampling points inside the polygon and
     mapping each to its tile. sample_step_deg must be well below the tile size
     (~0.022 deg at z14) so every overlapping tile gets at least one hit.
+
+    votes overrides the geometry for tiles a human has ruled on. It defaults to
+    whatever load_votes() finds in VOTES_CSV, so every caller gets the rulings
+    without asking; pass votes={} to ignore the file and see the raw geometry.
     """
     minx, miny, maxx, maxy = geom.bounds
     lons = np.arange(minx, maxx + sample_step_deg, sample_step_deg)
@@ -60,13 +71,59 @@ def region_tiles(geom, z=Z, sample_step_deg=0.004):
     lon_grid, lat_grid = np.meshgrid(lons, lats)
 
     inside = contains_xy(geom, lon_grid.ravel(), lat_grid.ravel())
-    return earned_tiles(lat_grid.ravel()[inside], lon_grid.ravel()[inside], z)
+    tiles = earned_tiles(lat_grid.ravel()[inside], lon_grid.ravel()[inside], z)
+
+    return apply_votes(tiles, load_votes(z=z) if votes is None else votes)
 
 
-def unwalked_tiles(walked_lats, walked_lons, geom, z=Z, sample_step_deg=0.004):
+def unwalked_tiles(walked_lats, walked_lons, geom, z=Z, sample_step_deg=0.004,
+                   votes=None):
     """Return z-tiles overlapping geom that contain no walked point."""
     earned = earned_tiles(walked_lats, walked_lons, z)
-    return region_tiles(geom, z, sample_step_deg) - earned
+    return region_tiles(geom, z, sample_step_deg, votes) - earned
+
+
+def load_votes(path=VOTES_CSV, z=Z):
+    """Load subjective include/exclude decisions as {(x, y): bool}.
+
+    The geometric clip cannot settle every border tile -- the Southwick Jog is
+    Massachusetts sticking into Connecticut, and the tile south of Millstone
+    Point is 100% inside Waterford's polygon but is open water plus restricted
+    plant grounds. Those are judgment calls, so they live in a file a human
+    edits rather than in geometry.
+
+    A missing file is not an error: it just means no overrides.
+    """
+    if not os.path.exists(path):
+        return {}
+
+    votes = {}
+    with open(path, "r", newline="") as f:
+        rows = csv.DictReader(line for line in f if not line.lstrip().startswith("#"))
+        for row in rows:
+            if int(row["z"]) != z:
+                continue
+            votes[(int(row["x"]), int(row["y"]))] = bool(int(row["include"]))
+
+    return votes
+
+
+def apply_votes(tiles, votes):
+    """Apply include/exclude votes to a geometrically-derived tile set.
+
+    Votes win over the geometry in both directions: a tile voted out is dropped
+    even if the polygon contains it, and a tile voted in is added even if the
+    polygon does not.
+    """
+    tiles = set(tiles)
+    tiles -= {t for t, include in votes.items() if not include}
+    tiles |= {t for t, include in votes.items() if include}
+    return tiles
+
+
+def tile_at(lat, lon, z=Z):
+    """Return the (x, y) tile containing a single lat/lon point."""
+    return next(iter(earned_tiles([lat], [lon], z)))
 
 
 def _tile_lat(y, n):
@@ -217,3 +274,34 @@ def cluster_legend_patch(label="Unwalked grid"):
     """A legend handle matching the cluster fill style."""
     return Patch(facecolor=CLUSTER_FILL_COLOR, alpha=CLUSTER_FILL_ALPHA,
                  edgecolor=SQUADRAT_COLOR, label=label)
+
+
+def _main():
+    """Look up the tile for a point and print a ready-to-paste vote row."""
+    import argparse
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--at", nargs=2, type=float, metavar=("LAT", "LON"),
+                        required=True, help="Point to look up.")
+    parser.add_argument("--include", type=int, choices=(0, 1), default=0,
+                        help="Vote to emit: 0 excludes the tile (default), 1 includes it.")
+    parser.add_argument("--note", default="", help="Reason, recorded in the CSV row.")
+    args = parser.parse_args()
+
+    lat, lon = args.at
+    x, y = tile_at(lat, lon)
+    lon_w, lon_e, lat_s, lat_n = tile_bounds(x, y)
+
+    votes = load_votes()
+    current = votes.get((x, y))
+    print(f"tile ({x}, {y}) at z{Z}")
+    print(f"  lon {lon_w:.6f} .. {lon_e:.6f}")
+    print(f"  lat {lat_s:.6f} .. {lat_n:.6f}")
+    print(f"  existing vote: {'include' if current else 'exclude' if current is not None else 'none'}")
+    print("\nrow for tile_votes.csv:")
+    print(f'{x},{y},{Z},{args.include},'
+          f'{(lat_s + lat_n) / 2:.6f},{(lon_w + lon_e) / 2:.6f},"{args.note}"')
+
+
+if __name__ == "__main__":
+    _main()

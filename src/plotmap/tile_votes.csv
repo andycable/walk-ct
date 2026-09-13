@@ -1,0 +1,14 @@
+# Subjective per-tile include/exclude decisions for Connecticut squadrats.
+#
+# The geometric clip (state or town polygons) cannot settle every border tile.
+# This file overrides it. One row per tile; the vote always wins.
+#
+#   include = 1  force the tile INTO Connecticut
+#   include = 0  force the tile OUT of Connecticut
+#
+# center_lat/center_lon and note are for humans only - nothing reads them back.
+# To find the tile for a point:  python squadrats.py --at LAT LON
+#
+x,y,z,include,center_lat,center_lon,note
+4879,6080,14,0,42.024813,-72.784424,"Southwick Jog - the notch is Massachusetts, not CT"
+4907,6124,14,0,41.302571,-72.169189,"Millstone Point south - mostly Sound, the land is restricted plant grounds"
