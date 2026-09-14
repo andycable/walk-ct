@@ -22,7 +22,9 @@ import osmnx as ox
 from matplotlib.patches import Patch
 import squadrats
 
+import coverage_bands
 import ct_outline
+
 # Configuration (5x5 grid subdivision)
 LAT_STEP = 0.0006
 LON_STEP = 0.0008
@@ -230,42 +232,8 @@ def render_town_heatmap(town_grid, extent, town_geom, town_name, output_path, st
     # Flip for display
     town_grid_flipped = town_grid[::-1]
 
-    # Quarter-mile color scheme: distinct color for each 0.25-mile band up to 1.5 miles
-    rgb_map = {
-        'white': np.array([1.0, 1.0, 1.0]),              # distance=0 (walked)
-        '0.00-0.25': np.array([0.68, 0.85, 1.0]),       # light blue
-        '0.25-0.50': np.array([0.0, 0.5, 1.0]),         # blue
-        '0.50-0.75': np.array([0.0, 0.75, 1.0]),        # cyan
-        '0.75-1.00': np.array([0.0, 0.75, 0.0]),        # green
-        '1.00-1.25': np.array([1.0, 1.0, 0.0]),         # yellow
-        '1.25-1.50': np.array([1.0, 0.647, 0.0]),       # orange
-        '>1.50': np.array([1.0, 0.0, 0.0]),             # red
-    }
-
-    rgb_grid = np.zeros((*town_grid.shape, 3))
-
-    for i in range(town_grid.shape[0]):
-        for j in range(town_grid.shape[1]):
-            dist = town_grid[i, j]
-
-            if np.isnan(dist):
-                rgb_grid[i, j] = np.array([0.95, 0.95, 0.95])  # light gray outside town
-            elif dist == 0:
-                rgb_grid[i, j] = rgb_map['white']
-            elif dist < 0.25:
-                rgb_grid[i, j] = rgb_map['0.00-0.25']
-            elif dist < 0.50:
-                rgb_grid[i, j] = rgb_map['0.25-0.50']
-            elif dist < 0.75:
-                rgb_grid[i, j] = rgb_map['0.50-0.75']
-            elif dist < 1.00:
-                rgb_grid[i, j] = rgb_map['0.75-1.00']
-            elif dist < 1.25:
-                rgb_grid[i, j] = rgb_map['1.00-1.25']
-            elif dist < 1.50:
-                rgb_grid[i, j] = rgb_map['1.25-1.50']
-            else:
-                rgb_grid[i, j] = rgb_map['>1.50']
+    # Same quarter-mile bands as the statewide map, from coverage_bands.
+    rgb_grid = coverage_bands.rgb_grid(town_grid)
 
     # Flip for display
     rgb_grid = rgb_grid[::-1]
@@ -298,16 +266,7 @@ def render_town_heatmap(town_grid, extent, town_geom, town_name, output_path, st
         squadrats.draw_squadrat_tiles(ax, squadrat_tiles, bbox=extent)
 
     # Create custom legend for distance bands
-    legend_elements = [
-        Patch(facecolor=[1.0, 1.0, 1.0], edgecolor='black', label='Walked (0 mi)'),
-        Patch(facecolor=[0.68, 0.85, 1.0], edgecolor='black', label='0.00–0.25 mi'),
-        Patch(facecolor=[0.0, 0.5, 1.0], edgecolor='black', label='0.25–0.50 mi'),
-        Patch(facecolor=[0.0, 0.75, 1.0], edgecolor='black', label='0.50–0.75 mi'),
-        Patch(facecolor=[0.0, 0.75, 0.0], edgecolor='black', label='0.75–1.00 mi'),
-        Patch(facecolor=[1.0, 1.0, 0.0], edgecolor='black', label='1.00–1.25 mi'),
-        Patch(facecolor=[1.0, 0.647, 0.0], edgecolor='black', label='1.25–1.50 mi'),
-        Patch(facecolor=[1.0, 0.0, 0.0], edgecolor='black', label='>1.50 mi'),
-    ]
+    legend_elements = coverage_bands.legend_patches()
     if squadrat_tiles:
         legend_elements.append(squadrats.legend_patch())
     # Place the color key in a single row along the top, above the plot,

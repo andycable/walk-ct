@@ -133,7 +133,7 @@ var sat = L.tileLayer(
 L.control.layers({ 'Streets': streets, 'Light': light, 'Dark': dark, 'Satellite': sat },
                  null, { position: 'topright' }).addTo(map);
 
-var HEAT_BANDS = [["0.00-0.25 mi","rgb(173,217,255)"],["0.25-0.50 mi","rgb(0,128,255)"],["0.50-0.75 mi","rgb(0,191,255)"],["0.75-1.00 mi","rgb(0,191,0)"],["1.00-1.25 mi","rgb(255,255,0)"],["1.25-1.50 mi","rgb(255,165,0)"],["1.50+ mi","rgb(255,0,0)"]];
+var HEAT_BANDS = [["0.00\u20130.25 mi","rgb(173,217,255)"],["0.25\u20130.50 mi","rgb(0,128,255)"],["0.50\u20130.75 mi","rgb(0,191,255)"],["0.75\u20131.00 mi","rgb(0,191,0)"],["1.00\u20131.25 mi","rgb(255,255,0)"],["1.25\u20131.50 mi","rgb(255,165,0)"],[">1.50 mi","rgb(255,0,0)"]];
 
 (function () {
   var row = document.getElementById('heat-row');

@@ -22,6 +22,7 @@ from matplotlib.collections import LineCollection
 from matplotlib.patches import Circle, Ellipse, Patch
 import squadrats
 import ct_outline
+import coverage_bands
 
 # Configuration
 LAT_STEP = 0.0012  # Latitude grid spacing (3:4 lat:lon ratio, ~438 ft cells)
@@ -509,58 +510,16 @@ def render_heatmap(distance_grid, extent, walked_lines=None, unwalked_lines=None
     # Flip vertically so north is up (matches find_largest_unwalked.py pattern)
     distance_grid_flipped = distance_grid[::-1]
 
-    # Build RGB array with quarter-mile color bands (0.25 mi increments up to 1.5 mi)
-    rgb_map = {
-        'white': np.array([1.0, 1.0, 1.0]),              # distance=0 (walked)
-        '0.00-0.25': np.array([0.68, 0.85, 1.0]),       # light blue
-        '0.25-0.50': np.array([0.0, 0.5, 1.0]),         # blue
-        '0.50-0.75': np.array([0.0, 0.75, 1.0]),        # cyan
-        '0.75-1.00': np.array([0.0, 0.75, 0.0]),        # green
-        '1.00-1.25': np.array([1.0, 1.0, 0.0]),         # yellow
-        '1.25-1.50': np.array([1.0, 0.647, 0.0]),       # orange
-        '>1.50': np.array([1.0, 0.0, 0.0]),             # red
-    }
+    # Quarter-mile bands, from coverage_bands so this and the per-town maps and
+    # the interactive overlay cannot drift apart.
+    rgb_grid = coverage_bands.rgb_grid(distance_grid)
 
-    # Create mapping of label IDs to colors for top 10 areas
-    label_to_color = {}
+    # Paint the top unwalked areas over the bands, at the bottom of the draw
+    # order, so the circles and labels added later still show on top.
     if top_10_areas and labeled_grid is not None:
         for area in top_10_areas:
-            label_to_color[area['label_id']] = area.get('color', (0.0, 0.0, 1.0))
-
-    # Build RGB grid in original (non-flipped) orientation
-    rgb_grid = np.zeros((*distance_grid.shape, 3))
-
-    for i in range(distance_grid.shape[0]):
-        for j in range(distance_grid.shape[1]):
-            dist = distance_grid[i, j]
-
-            # Fill the top-20 unwalked areas FIRST so the solid fill sits at
-            # the bottom layer and all circles/labels drawn later show on top.
-            cell_label = labeled_grid[i, j] if labeled_grid is not None else 0
-            cell_color = label_to_color.get(cell_label, None)
-
-            if cell_color is not None:
-                # Use assigned blue shade for this unwalked area
-                rgb_grid[i, j] = np.array(cell_color)
-            elif np.isnan(dist):
-                # Outside CT: light gray
-                rgb_grid[i, j] = np.array([0.95, 0.95, 0.95])
-            elif dist == 0:
-                rgb_grid[i, j] = rgb_map['white']
-            elif dist < 0.25:
-                rgb_grid[i, j] = rgb_map['0.00-0.25']
-            elif dist < 0.50:
-                rgb_grid[i, j] = rgb_map['0.25-0.50']
-            elif dist < 0.75:
-                rgb_grid[i, j] = rgb_map['0.50-0.75']
-            elif dist < 1.00:
-                rgb_grid[i, j] = rgb_map['0.75-1.00']
-            elif dist < 1.25:
-                rgb_grid[i, j] = rgb_map['1.00-1.25']
-            elif dist < 1.50:
-                rgb_grid[i, j] = rgb_map['1.25-1.50']
-            else:
-                rgb_grid[i, j] = rgb_map['>1.50']
+            colour = area.get('color', (0.0, 0.0, 1.0))
+            rgb_grid[labeled_grid == area['label_id']] = np.array(colour)
 
     # Flip for display (north up)
     rgb_grid = rgb_grid[::-1]
@@ -640,16 +599,7 @@ def render_heatmap(distance_grid, extent, walked_lines=None, unwalked_lines=None
     add_town_labels(ax, highlight_towns)
 
     # Create custom legend for distance bands
-    legend_elements = [
-        Patch(facecolor=[1.0, 1.0, 1.0], edgecolor='black', label='Walked (0 mi)'),
-        Patch(facecolor=[0.68, 0.85, 1.0], edgecolor='black', label='0.00–0.25 mi'),
-        Patch(facecolor=[0.0, 0.5, 1.0], edgecolor='black', label='0.25–0.50 mi'),
-        Patch(facecolor=[0.0, 0.75, 1.0], edgecolor='black', label='0.50–0.75 mi'),
-        Patch(facecolor=[0.0, 0.75, 0.0], edgecolor='black', label='0.75–1.00 mi'),
-        Patch(facecolor=[1.0, 1.0, 0.0], edgecolor='black', label='1.00–1.25 mi'),
-        Patch(facecolor=[1.0, 0.647, 0.0], edgecolor='black', label='1.25–1.50 mi'),
-        Patch(facecolor=[1.0, 0.0, 0.0], edgecolor='black', label='>1.50 mi'),
-    ]
+    legend_elements = coverage_bands.legend_patches()
     if squadrat_tiles:
         legend_elements.append(squadrats.legend_patch())
         legend_elements.append(squadrats.cluster_legend_patch())

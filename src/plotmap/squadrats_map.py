@@ -25,6 +25,7 @@ from pathlib import Path
 
 from shapely.geometry import shape, mapping
 
+import coverage_bands
 import ct_outline
 
 GEOJSON_IN = "squadrats_z14.geojson"
@@ -45,17 +46,6 @@ CARTO_KEY_ENV = "CARTO"
 # Coverage heatmap overlay, built from the same distance grid heatmap.py draws.
 DISTANCE_CSV = "Distance_3_ct.csv"
 
-# Upper edge of each band in miles, and its colour. Must stay in step with the
-# rgb_map in heatmap.py or the two views of the same data will disagree.
-HEATMAP_BANDS = [
-    (0.25, (173, 217, 255)),
-    (0.50, (0, 128, 255)),
-    (0.75, (0, 191, 255)),
-    (1.00, (0, 191, 0)),
-    (1.25, (255, 255, 0)),
-    (1.50, (255, 165, 0)),
-    (float("inf"), (255, 0, 0)),
-]
 CARTO_STYLES = {"voyager": "Streets", "light_all": "Light", "dark_all": "Dark"}
 
 
@@ -121,16 +111,6 @@ def load_town_stats(path=TOWN_CSV):
     return stats
 
 
-def heatmap_legend():
-    """[[label, css-colour], ...] for the band swatches, from HEATMAP_BANDS."""
-    out, low = [], 0.0
-    for high, rgb in HEATMAP_BANDS:
-        label = f"{low:.2f}-{high:.2f}" if high != float("inf") else f"{low:.2f}+"
-        out.append([label + " mi", "rgb(%d,%d,%d)" % rgb])
-        low = high
-    return out
-
-
 def _mercator_y(lat_deg):
     """Web Mercator y for a latitude, in radians-equivalent units."""
     return math.log(math.tan(math.pi / 4 + math.radians(lat_deg) / 2))
@@ -167,14 +147,13 @@ def build_heatmap_overlay(path=DISTANCE_CSV):
     rows, cols = len(lats), len(lons)
 
     # Band index per cell; 0 stays transparent for everything outside CT.
-    edges = [b for b, _ in HEATMAP_BANDS[:-1]]
     grid = np.zeros((rows, cols), dtype=np.uint8)
     # searchsorted against the exact lattice values, not arithmetic on the
     # step size - deriving d_lat from two adjacent floats drifts by enough to
     # push the final row one index past the end of the array.
     r = np.searchsorted(lats, df["lat"].to_numpy())
     c = np.searchsorted(lons, df["long"].to_numpy())
-    grid[r, c] = np.digitize(df["Dist"].to_numpy(), edges) + 1
+    grid[r, c] = coverage_bands.band_index(df["Dist"].to_numpy())
 
     # Outer edges of the lattice, not cell centres - these are the image bounds.
     south, north = lats[0] - d_lat / 2, lats[-1] + d_lat / 2
@@ -187,12 +166,8 @@ def build_heatmap_overlay(path=DISTANCE_CSV):
     src = np.clip(((lat_of_row - south) / d_lat).astype(int), 0, rows - 1)
     image_rows = grid[src]          # row 0 is now the north edge
 
-    palette = [0, 0, 0]
-    for _, rgb in HEATMAP_BANDS:
-        palette += list(rgb)
-
     img = Image.fromarray(image_rows, mode="P")
-    img.putpalette(palette + [0] * (768 - len(palette)))
+    img.putpalette(coverage_bands.png_palette())
     buf = io.BytesIO()
     img.save(buf, format="PNG", optimize=True, transparency=0)
     png = buf.getvalue()
@@ -506,7 +481,7 @@ def main():
         .replace("__TOWN_STATS__", json.dumps(stats, separators=(",", ":")))
         .replace("__META__", json.dumps(meta, separators=(",", ":")))
         .replace("__ACCENT__", SQUADRAT_COLOR)
-        .replace("__HEAT_BANDS__", json.dumps(heatmap_legend(), separators=(",", ":")))
+        .replace("__HEAT_BANDS__", json.dumps(coverage_bands.legend_pairs(), separators=(",", ":")))
         .replace("__HEATMAP__", json.dumps(overlay, separators=(",", ":")))
         .replace("__CARTO_SUFFIX__", f"?key={key}" if key else "")
     )
