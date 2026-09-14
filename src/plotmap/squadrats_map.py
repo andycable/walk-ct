@@ -15,9 +15,13 @@ their tile usage policy.
 """
 
 import argparse
+import base64
 import csv
+import io
 import json
+import math
 import os
+from pathlib import Path
 
 from shapely.geometry import shape, mapping
 
@@ -37,6 +41,21 @@ OUTPUT_HTML = "squadrats_map.html"
 # the CARTO environment variable and baked into the generated HTML, which is
 # committed - a deliberate choice, not an oversight.
 CARTO_KEY_ENV = "CARTO"
+
+# Coverage heatmap overlay, built from the same distance grid heatmap.py draws.
+DISTANCE_CSV = "Distance_3_ct.csv"
+
+# Upper edge of each band in miles, and its colour. Must stay in step with the
+# rgb_map in heatmap.py or the two views of the same data will disagree.
+HEATMAP_BANDS = [
+    (0.25, (173, 217, 255)),
+    (0.50, (0, 128, 255)),
+    (0.75, (0, 191, 255)),
+    (1.00, (0, 191, 0)),
+    (1.25, (255, 255, 0)),
+    (1.50, (255, 165, 0)),
+    (float("inf"), (255, 0, 0)),
+]
 CARTO_STYLES = {"voyager": "Streets", "light_all": "Light", "dark_all": "Dark"}
 
 
@@ -102,6 +121,89 @@ def load_town_stats(path=TOWN_CSV):
     return stats
 
 
+def heatmap_legend():
+    """[[label, css-colour], ...] for the band swatches, from HEATMAP_BANDS."""
+    out, low = [], 0.0
+    for high, rgb in HEATMAP_BANDS:
+        label = f"{low:.2f}-{high:.2f}" if high != float("inf") else f"{low:.2f}+"
+        out.append([label + " mi", "rgb(%d,%d,%d)" % rgb])
+        low = high
+    return out
+
+
+def _mercator_y(lat_deg):
+    """Web Mercator y for a latitude, in radians-equivalent units."""
+    return math.log(math.tan(math.pi / 4 + math.radians(lat_deg) / 2))
+
+
+def build_heatmap_overlay(path=DISTANCE_CSV):
+    """Render the distance grid as a PNG data URI for L.imageOverlay.
+
+    Returns {"url": data-uri, "bounds": [[s, w], [n, e]]}, or None if the
+    distance CSV is missing.
+
+    Two things make this worth doing as a raster. The bands are a 0.001 degree
+    lattice whose edges follow every road, so as contour polygons they come to
+    1.1M vertices and about 4 MB even simplified; as an indexed PNG the same
+    grid at full resolution is ~160 KB. And the rows are RESAMPLED TO MERCATOR
+    spacing here, because Leaflet stretches an image overlay linearly in screen
+    space - handing it an equirectangular grid misplaces mid-state latitudes by
+    246 m, a fifth of a squadrat, which would put the colours slightly north of
+    the tiles they describe.
+    """
+    import numpy as np
+    import pandas as pd
+    from PIL import Image
+
+    if not Path(path).exists():
+        print(f"Note: {path} not found - building the map without the heatmap.")
+        return None
+
+    df = pd.read_csv(path)
+    lats = np.sort(df["lat"].unique())
+    lons = np.sort(df["long"].unique())
+    d_lat = lats[1] - lats[0]
+    d_lon = lons[1] - lons[0]
+    rows, cols = len(lats), len(lons)
+
+    # Band index per cell; 0 stays transparent for everything outside CT.
+    edges = [b for b, _ in HEATMAP_BANDS[:-1]]
+    grid = np.zeros((rows, cols), dtype=np.uint8)
+    # searchsorted against the exact lattice values, not arithmetic on the
+    # step size - deriving d_lat from two adjacent floats drifts by enough to
+    # push the final row one index past the end of the array.
+    r = np.searchsorted(lats, df["lat"].to_numpy())
+    c = np.searchsorted(lons, df["long"].to_numpy())
+    grid[r, c] = np.digitize(df["Dist"].to_numpy(), edges) + 1
+
+    # Outer edges of the lattice, not cell centres - these are the image bounds.
+    south, north = lats[0] - d_lat / 2, lats[-1] + d_lat / 2
+    west, east = lons[0] - d_lon / 2, lons[-1] + d_lon / 2
+
+    # Resample rows so equal pixel steps are equal Mercator steps.
+    y_north, y_south = _mercator_y(north), _mercator_y(south)
+    y_mid = y_north - (np.arange(rows) + 0.5) * (y_north - y_south) / rows
+    lat_of_row = np.degrees(2 * np.arctan(np.exp(y_mid)) - math.pi / 2)
+    src = np.clip(((lat_of_row - south) / d_lat).astype(int), 0, rows - 1)
+    image_rows = grid[src]          # row 0 is now the north edge
+
+    palette = [0, 0, 0]
+    for _, rgb in HEATMAP_BANDS:
+        palette += list(rgb)
+
+    img = Image.fromarray(image_rows, mode="P")
+    img.putpalette(palette + [0] * (768 - len(palette)))
+    buf = io.BytesIO()
+    img.save(buf, format="PNG", optimize=True, transparency=0)
+    png = buf.getvalue()
+
+    print(f"Heatmap overlay: {cols} x {rows} cells, {len(png) / 1024:.0f} KB PNG")
+    return {
+        "url": "data:image/png;base64," + base64.b64encode(png).decode("ascii"),
+        "bounds": [[float(south), float(west)], [float(north), float(east)]],
+    }
+
+
 TEMPLATE = """<!doctype html>
 <html lang="en">
 <head>
@@ -120,6 +222,13 @@ TEMPLATE = """<!doctype html>
     --accent: #d000d0;
   }
   * { box-sizing: border-box; }
+  /* The grid really is a 0.001 deg lattice; let it look like one rather than
+     smoothing it into a precision the data does not have. */
+  .heatmap-img { image-rendering: pixelated; image-rendering: crisp-edges; }
+  #heat-opacity { width: 100%; margin: 6px 0 2px; accent-color: var(--accent); }
+  .legend { display: flex; flex-wrap: wrap; gap: 2px 8px; margin-top: 6px; }
+  .legend span { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--dim); }
+  .legend i { width: 11px; height: 11px; border: 1px solid #0006; flex: none; }
   html, body { height: 100%; margin: 0; }
   body {
     display: flex; font: 14px/1.45 system-ui, -apple-system, Segoe UI, sans-serif;
@@ -173,12 +282,16 @@ TEMPLATE = """<!doctype html>
     <input type="search" id="filter" placeholder="Filter towns&hellip;" autocomplete="off">
     <label class="toggle"><input type="checkbox" id="show-towns" checked> Town boundaries</label>
     <label class="toggle"><input type="checkbox" id="show-earned"> Earned squadrats</label>
+    <label class="toggle" id="heat-row"><input type="checkbox" id="show-heat" checked> Coverage heatmap</label>
+    <input type="range" id="heat-opacity" min="0" max="100" value="65" title="Heatmap opacity">
+    <div class="legend" id="heat-legend"></div>
   </div>
   <div id="towns"></div>
   <footer>Each square is ~1.14 mi on a side. Click one for its location.</footer>
 </div>
 <div id="map"></div>
 <script>
+var HEATMAP = __HEATMAP__;
 var SQUADRATS = __SQUADRATS__;
 var TOWNS = __TOWNS__;
 var TOWN_STATS = __TOWN_STATS__;
@@ -202,6 +315,20 @@ function cartoLayer(style) {
     { maxZoom: 20, attribution: CARTO_ATTR }
   );
 }
+// Its own pane, between the basemap tiles (200) and the vector overlays
+// (400), so the coverage colours sit under the squadrat outlines instead of
+// washing them out.
+map.createPane('heatPane');
+map.getPane('heatPane').style.zIndex = 250;
+map.getPane('heatPane').style.pointerEvents = 'none';
+
+var heat = null;
+if (HEATMAP) {
+  heat = L.imageOverlay(HEATMAP.url, HEATMAP.bounds, {
+    pane: 'heatPane', opacity: 0.65, className: 'heatmap-img', interactive: false
+  }).addTo(map);
+}
+
 var streets = cartoLayer('voyager').addTo(map);
 var light = cartoLayer('light_all');
 var dark = cartoLayer('dark_all');
@@ -211,6 +338,35 @@ var sat = L.tileLayer(
 );
 L.control.layers({ 'Streets': streets, 'Light': light, 'Dark': dark, 'Satellite': sat },
                  null, { position: 'topright' }).addTo(map);
+
+var HEAT_BANDS = __HEAT_BANDS__;
+
+(function () {
+  var row = document.getElementById('heat-row');
+  var slider = document.getElementById('heat-opacity');
+  var legend = document.getElementById('heat-legend');
+  var box = document.getElementById('show-heat');
+
+  if (!heat) {                       // no distance grid available at build time
+    row.style.display = 'none';
+    slider.style.display = 'none';
+    return;
+  }
+
+  HEAT_BANDS.forEach(function (b) {
+    var el = document.createElement('span');
+    el.innerHTML = '<i style="background:' + b[1] + '"></i>' + b[0];
+    legend.appendChild(el);
+  });
+
+  box.addEventListener('change', function () {
+    if (box.checked) { heat.addTo(map); } else { map.removeLayer(heat); }
+    slider.disabled = !box.checked;
+  });
+  slider.addEventListener('input', function () {
+    heat.setOpacity(slider.value / 100);
+  });
+})();
 
 function popupHtml(p) {
   var gmaps = 'https://www.google.com/maps?q=' + p.center_lat + ',' + p.center_lon;
@@ -328,10 +484,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--geojson", default=GEOJSON_IN, help=f"input tiles (default {GEOJSON_IN})")
     parser.add_argument("--output", default=OUTPUT_HTML, help=f"output HTML (default {OUTPUT_HTML})")
+    parser.add_argument("--no-heatmap", action="store_true",
+                        help="Skip the coverage heatmap overlay (a ~210 KB data URI).")
     parser.add_argument("--carto-key", default=None,
                         help="CARTO basemap key (default: the CARTO environment variable)")
     args = parser.parse_args()
     key = carto_key(args.carto_key)
+    overlay = None if args.no_heatmap else build_heatmap_overlay()
 
     with open(args.geojson, "r") as f:
         squadrats_fc = json.load(f)
@@ -347,6 +506,8 @@ def main():
         .replace("__TOWN_STATS__", json.dumps(stats, separators=(",", ":")))
         .replace("__META__", json.dumps(meta, separators=(",", ":")))
         .replace("__ACCENT__", SQUADRAT_COLOR)
+        .replace("__HEAT_BANDS__", json.dumps(heatmap_legend(), separators=(",", ":")))
+        .replace("__HEATMAP__", json.dumps(overlay, separators=(",", ":")))
         .replace("__CARTO_SUFFIX__", f"?key={key}" if key else "")
     )
 
