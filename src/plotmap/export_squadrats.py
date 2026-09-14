@@ -158,7 +158,9 @@ def main():
     geom = ct_outline.ct_outline(args.boundary)
     print(f"Clipping to the {args.boundary} outline")
 
-    walked = load_walked_coordinates()
+    # snap=False: tile membership is decided at the raw coordinate, since a
+    # z14 tile edge can fall anywhere and rounding can cross one.
+    walked = load_walked_coordinates(snap=False)
 
     earned_all = squadrats.earned_tiles(walked["lat"], walked["lon"])
     region = squadrats.region_tiles(geom)

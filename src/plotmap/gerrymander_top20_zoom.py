@@ -10,6 +10,8 @@ Output: Gerrymander_Top20_Zoom.png
 """
 
 import numpy as np
+
+import grid_extent
 import matplotlib.pyplot as plt
 
 from gerrymander_map import (
@@ -32,7 +34,11 @@ OUTPUT_PNG = "Gerrymander_Top20_Zoom.png"
 def main():
     dist_grid, present_grid, extent = load_grid()
     rows, cols = dist_grid.shape
+    # Cell centers - the origin for the row/column arithmetic below. The
+    # picture itself is drawn on the cell edges.
     lon_min, lon_max, lat_min, lat_max = extent
+    img_extent = grid_extent.cell_extent(lon_min, lat_min, cols, rows,
+                                         GRID, GRID)
 
     labeled, regions = find_gerrymanders(dist_grid, present_grid)
     regions = regions[:TOP_N]
@@ -56,8 +62,7 @@ def main():
 
     for i, r in enumerate(regions):
         ax = axes[i]
-        ax.imshow(img, extent=[lon_min, lon_max, lat_min, lat_max],
-                  aspect=1.4, interpolation="nearest")
+        ax.imshow(img, extent=img_extent, aspect=1.4, interpolation="nearest")
 
         # Bounding box of this gerrymander in lat/lon.
         r_lat_min = lat_min + r["row_min"] * GRID

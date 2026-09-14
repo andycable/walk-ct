@@ -23,6 +23,7 @@ from matplotlib.patches import Circle, Ellipse, Patch
 import squadrats
 import ct_outline
 import coverage_bands
+import grid_extent
 
 # Configuration
 LAT_STEP = 0.0012  # Latitude grid spacing (3:4 lat:lon ratio, ~438 ft cells)
@@ -165,15 +166,27 @@ def get_town_boundaries():
     return walked_lines, unwalked_lines
 
 
-def round_to_nearest_multiple_of_0001(value):
-    """Round to nearest .0001 (5-digit precision)."""
-    scaled = value * 10000
-    rounded_scaled = int(np.round(scaled))
-    return rounded_scaled / 10000
+def snap_coordinates(walked):
+    """Round a walked frame to the 0.0001-degree lattice and de-duplicate."""
+    out = pd.DataFrame({'lat': np.round(walked['lat'], 4),
+                        'lon': np.round(walked['lon'], 4)})
+    return out.drop_duplicates(subset=['lat', 'lon']).reset_index(drop=True)
 
 
-def load_walked_coordinates():
-    """Load all 5-decimal parquet files and combine, rounding to 5-digit precision."""
+def load_walked_coordinates(snap=True):
+    """Every walked coordinate from the monthly parquet files, de-duplicated.
+
+    snap=True rounds to the nearest 0.0001 degree first, which collapses 6.9M
+    distinct points to 1.8M. That is what the distance grid wants: its cells
+    are 0.0012 x 0.0016 degrees, so the rounding cannot move a point out of its
+    own cell, and the 4x smaller frame is 4x less to walk in build_distance_grid.
+
+    snap=False keeps the coordinates as recorded. Squadrat callers need this.
+    A z14 tile boundary can fall anywhere, so rounding CAN carry a point across
+    one: a single GPS fix 2.4 m inside the north-east corner of tile 4915/6118
+    in Ledyard rounded diagonally into its neighbour, and the map then showed
+    ground that had been walked as an unwalked square.
+    """
     parquet_files = sorted(glob.glob("../../data/lat_long.5.*.parquet"))
 
     print(f"Loading {len(parquet_files)} parquet files...")
@@ -184,9 +197,10 @@ def load_walked_coordinates():
 
     combined = pd.concat(dfs, ignore_index=True)
 
-    # Round to nearest .0001 (5-digit precision)
-    combined['lat'] = combined['lat'].apply(round_to_nearest_multiple_of_0001)
-    combined['lon'] = combined['lon'].apply(round_to_nearest_multiple_of_0001)
+    if snap:
+        # Vectorised; the old per-value .apply() cost a minute on 7M rows.
+        combined['lat'] = np.round(combined['lat'], 4)
+        combined['lon'] = np.round(combined['lon'], 4)
 
     combined = combined.drop_duplicates(subset=['lat', 'lon']).reset_index(drop=True)
 
@@ -201,7 +215,7 @@ def build_distance_grid(walked_coords, ct_boundary):
 
     Returns:
         distance_grid: 2D array of distances in miles (np.nan outside CT)
-        extent: [lon_min, lon_max, lat_min, lat_max] for imshow
+        extent: [west, east, south, north] cell EDGES, for imshow
     """
     lat_min, lat_max = CT_BBOX['lat_min'], CT_BBOX['lat_max']
     lon_min, lon_max = CT_BBOX['lon_min'], CT_BBOX['lon_max']
@@ -247,7 +261,10 @@ def build_distance_grid(walked_coords, ct_boundary):
     # Set cells outside CT to NaN
     distance_grid[~inside_ct] = np.nan
 
-    extent = [lon_min, lon_max, lat_min, lat_max]
+    # Cell edges, not the bbox this grid was cut from: rows/cols come from a
+    # rounded division, so the last cell center is not lon_max/lat_max.
+    extent = grid_extent.cell_extent(lon_min, lat_min, cols, rows,
+                                     LON_STEP, LAT_STEP)
     return distance_grid, extent
 
 
@@ -647,7 +664,9 @@ def main():
     print("Building Euclidean distance heatmap with 3:4 latitude:longitude ratio...")
 
     # Load data
-    walked_coords = load_walked_coordinates()
+    # Read once at full precision. The squadrats are decided on these
+    # coordinates, the distance grid on the snapped copy below.
+    walked_raw = load_walked_coordinates(snap=False)
 
     # Get CT boundary
     ct_boundary = get_ct_boundary(args.boundary)
@@ -656,12 +675,14 @@ def main():
     squadrat_tiles = None
     if not args.no_squadrats:
         squadrat_tiles = squadrats.unwalked_tiles(
-            walked_coords['lat'].to_numpy(), walked_coords['lon'].to_numpy(),
+            walked_raw['lat'].to_numpy(), walked_raw['lon'].to_numpy(),
             ct_boundary,
         )
         print(f"{len(squadrat_tiles)} unwalked squadrat (z{squadrats.Z}) tiles in CT")
 
     # Build grid with distances
+    walked_coords = snap_coordinates(walked_raw)
+    print(f"Snapped to {len(walked_coords)} grid coordinates")
     distance_grid, extent = build_distance_grid(walked_coords, ct_boundary)
 
     # Print distance summary

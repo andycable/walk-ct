@@ -49,6 +49,11 @@ DISTANCE_CSV = "Distance_3_ct.csv"
 
 CARTO_STYLES = {"voyager": "Streets", "light_all": "Light", "dark_all": "Dark"}
 
+# Vertical oversampling for the Mercator resample of the heatmap overlay.
+# 2 is enough for Connecticut: the Mercator stretch top-to-bottom is well
+# under a factor of 2, so no source row can fall between output rows.
+MERCATOR_OVERSAMPLE = 2
+
 
 def carto_key(explicit=None):
     """The CARTO basemap key, from --carto-key or the CARTO env var."""
@@ -118,6 +123,20 @@ def _mercator_y(lat_deg):
     return math.log(math.tan(math.pi / 4 + math.radians(lat_deg) / 2))
 
 
+def _lattice_step(values):
+    """The spacing of a regular lattice, read off values that may have holes.
+
+    The smallest gap between adjacent distinct values is the step: a missing
+    row widens one gap to a multiple of the step but never produces a smaller
+    one. Rounded to 1e-9 so float noise in the CSV cannot make it look like
+    two different steps.
+    """
+    import numpy as np
+
+    gaps = np.diff(np.unique(values))
+    return float(np.round(gaps.min(), 9))
+
+
 def build_heatmap_overlay(path=DISTANCE_CSV):
     """Render the distance grid as a PNG data URI for L.imageOverlay.
 
@@ -132,6 +151,15 @@ def build_heatmap_overlay(path=DISTANCE_CSV):
     space - handing it an equirectangular grid misplaces mid-state latitudes by
     246 m, a fifth of a squadrat, which would put the colours slightly north of
     the tiles they describe.
+
+    The raster is laid out on the GEOMETRIC lattice, not on the sorted list of
+    latitudes the CSV happens to contain. Those are not the same thing: the CT
+    outline clips whole rows away wherever the state is only a few cells wide,
+    and rows 40.9855 and 40.9865 - open water between Greenwich's offshore
+    islands - are missing entirely. Indexing by position in the unique-value
+    list then packed 1069 rows of data into 1071 rows of latitude, sliding
+    every row above the gap 222 m south of the ground it describes. Row index
+    has to come from the latitude itself.
     """
     import numpy as np
     import pandas as pd
@@ -142,28 +170,41 @@ def build_heatmap_overlay(path=DISTANCE_CSV):
         return None
 
     df = pd.read_csv(path)
-    lats = np.sort(df["lat"].unique())
-    lons = np.sort(df["long"].unique())
-    d_lat = lats[1] - lats[0]
-    d_lon = lons[1] - lons[0]
-    rows, cols = len(lats), len(lons)
+    lat = df["lat"].to_numpy()
+    lon = df["long"].to_numpy()
+
+    # Smallest gap between adjacent distinct values, which is the lattice step
+    # even when rows are missing. Taking lats[1] - lats[0] would work here only
+    # because the gap happens to fall above row 1.
+    d_lat = _lattice_step(lat)
+    d_lon = _lattice_step(lon)
+
+    lat0, lat1 = lat.min(), lat.max()
+    lon0, lon1 = lon.min(), lon.max()
+    rows = int(round((lat1 - lat0) / d_lat)) + 1
+    cols = int(round((lon1 - lon0) / d_lon)) + 1
 
     # Band index per cell; 0 stays transparent for everything outside CT.
+    # Index from the coordinate, so a row with no cells inside Connecticut
+    # stays an empty row instead of closing the gap and shifting its neighbours.
     grid = np.zeros((rows, cols), dtype=np.uint8)
-    # searchsorted against the exact lattice values, not arithmetic on the
-    # step size - deriving d_lat from two adjacent floats drifts by enough to
-    # push the final row one index past the end of the array.
-    r = np.searchsorted(lats, df["lat"].to_numpy())
-    c = np.searchsorted(lons, df["long"].to_numpy())
+    r = np.rint((lat - lat0) / d_lat).astype(int)
+    c = np.rint((lon - lon0) / d_lon).astype(int)
     grid[r, c] = coverage_bands.band_index(df["Dist"].to_numpy())
 
     # Outer edges of the lattice, not cell centres - these are the image bounds.
-    south, north = lats[0] - d_lat / 2, lats[-1] + d_lat / 2
-    west, east = lons[0] - d_lon / 2, lons[-1] + d_lon / 2
+    south, north = lat0 - d_lat / 2, lat1 + d_lat / 2
+    west, east = lon0 - d_lon / 2, lon1 + d_lon / 2
 
-    # Resample rows so equal pixel steps are equal Mercator steps.
+    # Resample rows so equal pixel steps are equal Mercator steps. The output
+    # is OVERSAMPLED vertically: at 1:1 the Mercator stretch across the state
+    # is enough that nearest-neighbour sampling skips a source row or two
+    # outright, which dropped 105 cells on rows 41.0445 and 41.2125. Asking
+    # for MERCATOR_OVERSAMPLE times as many rows gives every source row at
+    # least one pixel. Duplicate rows cost almost nothing in an indexed PNG.
+    out_rows = rows * MERCATOR_OVERSAMPLE
     y_north, y_south = _mercator_y(north), _mercator_y(south)
-    y_mid = y_north - (np.arange(rows) + 0.5) * (y_north - y_south) / rows
+    y_mid = y_north - (np.arange(out_rows) + 0.5) * (y_north - y_south) / out_rows
     lat_of_row = np.degrees(2 * np.arctan(np.exp(y_mid)) - math.pi / 2)
     src = np.clip(((lat_of_row - south) / d_lat).astype(int), 0, rows - 1)
     image_rows = grid[src]          # row 0 is now the north edge
@@ -174,7 +215,8 @@ def build_heatmap_overlay(path=DISTANCE_CSV):
     img.save(buf, format="PNG", optimize=True, transparency=0)
     png = buf.getvalue()
 
-    print(f"Heatmap overlay: {cols} x {rows} cells, {len(png) / 1024:.0f} KB PNG")
+    print(f"Heatmap overlay: {cols} x {rows} cells -> {cols} x {out_rows} px, "
+          f"{len(png) / 1024:.0f} KB PNG")
     return {
         "url": "data:image/png;base64," + base64.b64encode(png).decode("ascii"),
         "bounds": [[float(south), float(west)], [float(north), float(east)]],

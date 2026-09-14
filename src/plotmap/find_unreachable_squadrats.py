@@ -263,7 +263,7 @@ def main():
     outline = ct_outline.ct_outline(args.boundary)
     mainland, islands = mainland_and_islands(outline)
 
-    walked = load_walked_coordinates()
+    walked = load_walked_coordinates(snap=False)   # tile edges fall anywhere
     walked_lat = walked["lat"].to_numpy()
     walked_lon = walked["lon"].to_numpy()
     earned = squadrats.earned_tiles(walked_lat, walked_lon)

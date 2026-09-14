@@ -24,6 +24,7 @@ import squadrats
 
 import coverage_bands
 import ct_outline
+import grid_extent
 
 # Configuration (5x5 grid subdivision)
 LAT_STEP = 0.0006
@@ -57,8 +58,22 @@ def round_to_nearest_multiple_of_0001(value):
     return rounded_scaled / 10000
 
 
-def load_walked_coordinates():
-    """Load all 5-decimal parquet files and combine."""
+def snap_coordinates(walked):
+    """Round a walked frame to the 0.0001-degree lattice and de-duplicate."""
+    out = pd.DataFrame({'lat': np.round(walked['lat'], 4),
+                        'lon': np.round(walked['lon'], 4)})
+    return out.drop_duplicates(subset=['lat', 'lon']).reset_index(drop=True)
+
+
+def load_walked_coordinates(snap=True):
+    """Every walked coordinate from the monthly parquet files, de-duplicated.
+
+    snap=True rounds to the nearest 0.0001 degree, which is safe for the
+    distance grid (cells are 0.0012 x 0.0016 degrees, so a point cannot leave
+    its own cell) and collapses 6.9M points to 1.8M. Squadrat callers pass
+    snap=False: a z14 tile edge can fall anywhere, so the rounding can carry a
+    point across one. See heatmap.load_walked_coordinates.
+    """
     parquet_files = sorted(glob.glob("../../data/lat_long.5.*.parquet"))
 
     print(f"Loading {len(parquet_files)} parquet files...")
@@ -69,9 +84,9 @@ def load_walked_coordinates():
 
     combined = pd.concat(dfs, ignore_index=True)
 
-    # Round to nearest .0001 (5-digit precision)
-    combined['lat'] = combined['lat'].apply(round_to_nearest_multiple_of_0001)
-    combined['lon'] = combined['lon'].apply(round_to_nearest_multiple_of_0001)
+    if snap:
+        combined['lat'] = np.round(combined['lat'], 4)
+        combined['lon'] = np.round(combined['lon'], 4)
 
     combined = combined.drop_duplicates(subset=['lat', 'lon']).reset_index(drop=True)
 
@@ -160,7 +175,9 @@ def build_distance_grid(walked_coords, ct_boundary):
 
     distance_grid[~inside_ct] = np.nan
 
-    extent = [lon_min, lon_max, lat_min, lat_max]
+    # Cell edges, not the bbox this grid was cut from. See grid_extent.
+    extent = grid_extent.cell_extent(lon_min, lat_min, cols, rows,
+                                     LON_STEP, LAT_STEP)
     return distance_grid, extent, rows, cols
 
 
@@ -322,19 +339,21 @@ def main():
 
     # Load data once
     logger.info("Loading walked coordinates...")
-    walked_coords = load_walked_coordinates()
+    walked_raw = load_walked_coordinates(snap=False)
     ct_boundary = get_ct_boundary()
 
     # Compute UNWALKED squadrats (z14) once: tiles overlapping CT with no walked
-    # point. Drawn per town by culling to each town's extent.
+    # point. Drawn per town by culling to each town's extent. Decided on the
+    # unsnapped coordinates, since a tile edge can fall anywhere.
     squadrat_tiles = None
     if not args.no_squadrats:
         squadrat_tiles = squadrats.unwalked_tiles(
-            walked_coords['lat'].to_numpy(), walked_coords['lon'].to_numpy(),
+            walked_raw['lat'].to_numpy(), walked_raw['lon'].to_numpy(),
             ct_boundary,
         )
         logger.info(f"{len(squadrat_tiles)} unwalked squadrat (z{squadrats.Z}) tiles in CT")
     logger.info("Building distance grid...")
+    walked_coords = snap_coordinates(walked_raw)
     distance_grid, full_extent, rows, cols = build_distance_grid(walked_coords, ct_boundary)
     logger.info("Distance grid complete")
 
@@ -402,13 +421,13 @@ def main():
         inside_town = contains_xy(geom, lon_grid.ravel(), lat_grid.ravel()).reshape(town_grid.shape)
         town_grid[~inside_town] = np.nan
 
-        # Set extent for this town
-        town_extent = [
+        # Edges of the sliced block. This used to run from the center of the
+        # first cell to one whole step past the center of the last: the right
+        # width, but half a cell too far north and east.
+        town_extent = grid_extent.cell_extent(
             CT_BBOX['lon_min'] + c_min * LON_STEP,
-            CT_BBOX['lon_min'] + (c_max + 1) * LON_STEP,
             CT_BBOX['lat_min'] + r_min * LAT_STEP,
-            CT_BBOX['lat_min'] + (r_max + 1) * LAT_STEP,
-        ]
+            c_max - c_min + 1, r_max - r_min + 1, LON_STEP, LAT_STEP)
 
         # Fetch streets for this town
         streets = get_town_streets(geom, name, logger)

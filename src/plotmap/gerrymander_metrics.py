@@ -37,6 +37,8 @@ import csv
 from pathlib import Path
 
 import numpy as np
+
+import grid_extent
 from scipy import ndimage
 from scipy.spatial import ConvexHull
 import matplotlib.pyplot as plt
@@ -398,7 +400,11 @@ def render_image(shape, present_grid, labeled, picks):
 
 
 def draw_base(ax, img, extent, aspect, town_labels=False):
-    lon_min, lon_max, lat_min, lat_max = extent
+    # extent holds cell CENTERS (that is what the index arithmetic elsewhere
+    # measures from); imshow wants the outer edges.
+    rows, cols = img.shape[:2]
+    lon_min, lon_max, lat_min, lat_max = grid_extent.cell_extent(
+        extent[0], extent[2], cols, rows, GRID, GRID)
     ax.imshow(img, extent=[lon_min, lon_max, lat_min, lat_max], aspect=aspect,
               interpolation="nearest")
     for lons, lats in load_town_lines():

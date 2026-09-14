@@ -4,6 +4,8 @@ from scipy import ndimage
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
+import grid_extent
+
 # Load data
 print("Loading data...")
 df = pd.read_csv("Distance_3_ct.csv", low_memory=False)
@@ -169,8 +171,10 @@ for i, r in enumerate(results[:5]):
 # Flip vertically so north is up (lat increases upward)
 img = img[::-1]
 
-# Set extent for proper lat/long axes
-extent = [lon_min, lon_max, lat_min, lat_max]
+# Cell edges for the picture. lat_min/lon_min are cell CENTERS - they are the
+# origin the row and column indices above are measured from - so the image runs
+# half a cell beyond them on every side.
+extent = grid_extent.cell_extent(lon_min, lat_min, cols, rows, GRID, GRID)
 ax.imshow(img, extent=extent, aspect=1.4)
 
 # Add legend

@@ -1,4 +1,6 @@
 import numpy as np
+
+import grid_extent
 import pandas as pd
 from scipy import ndimage
 import matplotlib.pyplot as plt
@@ -107,7 +109,8 @@ norm = BoundaryNorm(boundaries, cmap.N)
 # Flip so north is up
 img_data = max_dist_grid_v[::-1]
 
-extent = [lon_min, lon_max, lat_min, lat_max]
+# Cell edges, not the cell centers lat_min/lon_min hold. See grid_extent.
+extent = grid_extent.cell_extent(lon_min, lat_min, cols, rows, GRID, GRID)
 ax.imshow(img_data, extent=extent, aspect=1.4, cmap=cmap, norm=norm,
           interpolation='nearest')
 

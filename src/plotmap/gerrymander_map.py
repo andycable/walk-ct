@@ -18,6 +18,8 @@ Output: Gerrymander_Map.png
 
 import json
 
+import grid_extent
+
 import ct_outline
 from pathlib import Path
 
@@ -271,7 +273,12 @@ def load_town_labels():
 def main():
     dist_grid, present_grid, extent = load_grid()
     rows, cols = dist_grid.shape
+    # load_grid returns cell CENTERS: lon_min/lat_min are the origin the row
+    # and column indices are measured from, so they stay as they are. The
+    # picture needs cell edges.
     lon_min, lon_max, lat_min, lat_max = extent
+    img_extent = grid_extent.cell_extent(lon_min, lat_min, cols, rows,
+                                         GRID, GRID)
 
     labeled, regions = find_gerrymanders(dist_grid, present_grid)
     regions = regions[:TOP_N]
@@ -289,8 +296,7 @@ def main():
     img = img[::-1]  # flip so north is up
 
     fig, ax = plt.subplots(1, 1, figsize=(16, 13))
-    ax.imshow(img, extent=[lon_min, lon_max, lat_min, lat_max], aspect=1.4,
-              interpolation="nearest")
+    ax.imshow(img, extent=img_extent, aspect=1.4, interpolation="nearest")
 
     # Overlay town boundaries.
     for lons, lats in load_town_lines():
@@ -301,8 +307,8 @@ def main():
         ax.text(lon_c, lat_c, name, fontsize=4, ha="center", va="center",
                 color="black", alpha=0.85, clip_on=True)
 
-    ax.set_xlim(lon_min, lon_max)
-    ax.set_ylim(lat_min, lat_max)
+    ax.set_xlim(img_extent[0], img_extent[1])
+    ax.set_ylim(img_extent[2], img_extent[3])
 
     color_counts = {name: 0 for name, _ in PRIMARY_COLORS}
     for r in regions:
