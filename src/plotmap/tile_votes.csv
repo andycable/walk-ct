@@ -28,3 +28,21 @@ x,y,z,include,center_lat,center_lon,note
 4837,6139,14,0,41.054501,-73.707275,"Greenwich border sliver: 0.86 acres in CT, no walkable public road - unearnable"
 4840,6133,14,0,41.153842,-73.641357,"Stamford border sliver: 0.06 acres in CT, no walkable public road - unearnable"
 4900,6126,14,0,41.269549,-72.322998,"Old Lyme border sliver: 0.02 acres in CT, no walkable public road - unearnable"
+#
+# Unreachable on foot from Connecticut: islands in Long
+# Island Sound, and border slivers whose only roads belong to
+# another state. Found by find_unreachable_squadrats.py.
+4841,6143,14,0,40.988191,-73.619385,"island in Long Island Sound, no mainland road access"
+4842,6143,14,0,40.988191,-73.597412,"island in Long Island Sound, no mainland road access"
+4851,6139,14,0,41.054501,-73.399658,"island in Long Island Sound, no mainland road access"
+4852,6138,14,0,41.071069,-73.377686,"island in Long Island Sound, no mainland road access"
+4880,6127,14,0,41.253032,-72.762451,"island in Long Island Sound, no mainland road access"
+4880,6128,14,0,41.236511,-72.762451,"island in Long Island Sound, no mainland road access"
+4853,6137,14,0,41.087632,-73.355713,"island in Long Island Sound, no mainland road access"
+4847,6078,14,0,42.057450,-73.487549,border sliver: roads here reach no Connecticut road
+4885,6079,14,0,42.041133,-72.652588,border sliver: roads here reach no Connecticut road
+4878,6079,14,0,42.041133,-72.806396,border sliver: roads here reach no Connecticut road
+4844,6120,14,0,41.368564,-73.553467,border sliver: roads here reach no Connecticut road
+4921,6123,14,0,41.319075,-71.861572,border sliver: roads here reach no Connecticut road
+4845,6107,14,0,41.582579,-73.531494,border sliver: roads here reach no Connecticut road
+4846,6098,14,0,41.730330,-73.509521,border sliver: roads here reach no Connecticut road

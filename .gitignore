@@ -10,3 +10,7 @@ src/convert/build/
 src/extraction.log
 src/sorted_data.tmp
 temp_read_parquet.R
+
+# OSM road data fetched by find_unreachable_squadrats.py (35MB, re-fetchable
+# from Overpass and rebuilt region by region if deleted)
+src/plotmap/road_network_cache.json

@@ -1,7 +1,6 @@
 Town,Earned,Unwalked,Total,PctEarned
 Vernon,8,7,15,53.3
 Manchester,12,9,21,57.1
-Norwalk,17,7,24,70.8
 South Windsor,15,6,21,71.4
 Windsor,18,6,24,75.0
 Windsor Locks,6,2,8,75.0
@@ -9,24 +8,22 @@ Canterbury,22,7,29,75.9
 Killingly,32,10,42,76.2
 East Windsor,16,5,21,76.2
 Ellington,20,6,26,76.9
+Norwalk,17,5,22,77.3
 Stafford,39,11,50,78.0
 West Hartford,15,4,19,78.9
 Ledyard,27,7,34,79.4
 Avon,16,4,20,80.0
 East Granby,13,3,16,81.2
-Salisbury,45,10,55,81.8
 East Haven,9,2,11,81.8
 Winchester,23,5,28,82.1
+Salisbury,45,9,54,83.3
 Mansfield,30,6,36,83.3
-Branford,20,4,24,83.3
 Norwich,20,4,24,83.3
 Marlborough,15,3,18,83.3
 Lisbon,10,2,12,83.3
 Ashford,26,5,31,83.9
 Canaan,21,4,25,84.0
-Granby,32,6,38,84.2
 Sharon,43,8,51,84.3
-Suffield,33,6,39,84.6
 Hartford,11,2,13,84.6
 Danbury,29,5,34,85.3
 Lebanon,35,6,41,85.4
@@ -34,14 +31,15 @@ Somers,24,4,28,85.7
 Franklin,12,2,14,85.7
 Brooklyn,19,3,22,86.4
 Burlington,19,3,22,86.4
+Granby,32,5,37,86.5
 Brookfield,13,2,15,86.7
 Old Saybrook,13,2,15,86.7
 Scotland,13,2,15,86.7
 Norfolk,33,5,38,86.8
+Suffield,33,5,38,86.8
 North Stonington,40,6,46,87.0
 Barkhamsted,27,4,31,87.1
 Coventry,28,4,32,87.5
-Sherman,21,3,24,87.5
 Sterling,21,3,24,87.5
 Bethlehem,14,2,16,87.5
 Wolcott,14,2,16,87.5
@@ -58,16 +56,15 @@ Guilford,35,4,39,89.7
 Warren,18,2,20,90.0
 Easton,19,2,21,90.5
 Old Lyme,19,2,21,90.5
+Branford,20,2,22,90.9
 Sprague,10,1,11,90.9
-Ridgefield,31,3,34,91.2
 Bristol,21,2,23,91.3
 Farmington,21,2,23,91.3
+Sherman,21,2,23,91.3
 Litchfield,43,4,47,91.5
 Andover,11,1,12,91.7
 Harwinton,24,2,26,92.3
 Darien,12,1,13,92.3
-Greenwich,49,4,53,92.5
-Kent,37,3,40,92.5
 Simsbury,25,2,27,92.6
 East Lyme,26,2,28,92.9
 Chester,13,1,14,92.9
@@ -77,14 +74,14 @@ Westbrook,14,1,15,93.3
 Torrington,30,2,32,93.8
 Chaplin,15,1,16,93.8
 East Hartford,15,1,16,93.8
+Ridgefield,31,2,33,93.9
 Cornwall,34,2,36,94.4
 Goshen,34,2,36,94.4
 Pomfret,34,2,36,94.4
 Plymouth,17,1,18,94.4
 Stratford,17,1,18,94.4
-Stonington,35,2,37,94.6
 New Canaan,18,1,19,94.7
-Westport,19,1,20,95.0
+Kent,37,2,39,94.9
 Eastford,20,1,21,95.2
 New Fairfield,20,1,21,95.2
 Salem,20,1,21,95.2
@@ -92,6 +89,7 @@ Wilton,21,1,22,95.5
 Preston,22,1,23,95.7
 Willington,22,1,23,95.7
 Fairfield,24,1,25,96.0
+Greenwich,49,2,51,96.1
 Cheshire,25,1,26,96.2
 Colebrook,26,1,27,96.3
 Woodbury,26,1,27,96.3
@@ -103,6 +101,7 @@ Haddam,34,1,35,97.1
 Montville,34,1,35,97.1
 Plainfield,33,1,34,97.1
 Stamford,33,1,34,97.1
+Stonington,35,1,36,97.2
 Glastonbury,38,1,39,97.4
 Newtown,43,1,44,97.7
 Woodstock,45,1,46,97.8
@@ -165,6 +164,7 @@ Waterford,30,0,30,100.0
 Watertown,24,0,24,100.0
 West Haven,12,0,12,100.0
 Weston,17,0,17,100.0
+Westport,19,0,19,100.0
 Wethersfield,9,0,9,100.0
 Windham,23,0,23,100.0
 Woodbridge,14,0,14,100.0
