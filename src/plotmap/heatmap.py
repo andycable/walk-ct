@@ -592,8 +592,18 @@ def render_heatmap(distance_grid, extent, walked_lines=None, unwalked_lines=None
         filled = squadrats.draw_squadrat_clusters(ax, regions, bbox=extent)
         print(f"Filled {filled} contiguous unwalked squadrat regions of 2+ tiles "
               f"(largest: {len(regions[0]) if regions else 0} tiles)")
-        drawn = squadrats.draw_squadrat_tiles(ax, squadrat_tiles, bbox=extent)
+        # Tiles with no walkable road in their CT part get a darker, heavier
+        # outline - they are unwalked for a different reason than the rest.
+        roadless = squadrats.load_roadless() & set(squadrat_tiles)
+        drawn = squadrats.draw_squadrat_tiles(
+            ax, set(squadrat_tiles) - roadless, bbox=extent)
         print(f"Drew {drawn} unwalked squadrat (z{squadrats.Z}) tile outlines")
+        if roadless:
+            marked = squadrats.draw_squadrat_tiles(
+                ax, roadless, bbox=extent,
+                edgecolor=squadrats.ROADLESS_COLOR,
+                linewidth=squadrats.ROADLESS_LINEWIDTH, alpha=1.0, zorder=21)
+            print(f"Marked {marked} tile(s) with no road in the CT part")
 
     # Add town name labels
     add_town_labels(ax, highlight_towns)
@@ -603,6 +613,8 @@ def render_heatmap(distance_grid, extent, walked_lines=None, unwalked_lines=None
     if squadrat_tiles:
         legend_elements.append(squadrats.legend_patch())
         legend_elements.append(squadrats.cluster_legend_patch())
+        if squadrats.load_roadless() & set(squadrat_tiles):
+            legend_elements.append(squadrats.roadless_legend_patch())
     ax.legend(handles=legend_elements, loc='upper left', fontsize=9, framealpha=0.95)
 
     ax.set_xlabel('Longitude')

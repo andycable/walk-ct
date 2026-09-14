@@ -27,6 +27,7 @@ from shapely.geometry import shape, mapping
 
 import coverage_bands
 import ct_outline
+import squadrats
 
 GEOJSON_IN = "squadrats_z14.geojson"
 
@@ -69,6 +70,7 @@ SKIP_TOWNS = {"County subdivisions not defined"}
 SIMPLIFY_DEG = 0.0008
 
 SQUADRAT_COLOR = "#d000d0"  # matches squadrats.SQUADRAT_COLOR
+ROADLESS_COLOR = "#8b0000"  # matches squadrats.ROADLESS_COLOR
 
 
 def load_towns_simplified(path=TOWNS_GEOJSON, tolerance=SIMPLIFY_DEG):
@@ -272,6 +274,7 @@ var TOWNS = __TOWNS__;
 var TOWN_STATS = __TOWN_STATS__;
 var META = __META__;
 var ACCENT = "__ACCENT__";
+var ROADLESS_COLOR = "__ROADLESS_COLOR__";
 
 var map = L.map('map').setView([41.6, -72.7], 9);
 
@@ -359,8 +362,19 @@ var earnedFeatures = SQUADRATS.features.filter(function (f) {
   return f.properties.status === 'earned';
 });
 
+// Tiles with no walkable road in their Connecticut part. Still squadrats,
+// but unwalked for a different reason, so they are drawn apart from the rest.
+var ROADLESS = new Set(__ROADLESS__);
+function isRoadless(f) { return ROADLESS.has(f.properties.x + '/' + f.properties.y); }
+
 var unwalkedLayer = L.geoJSON(unwalkedFeatures, {
-  style: { color: ACCENT, weight: 1.5, opacity: 0.9, fillColor: ACCENT, fillOpacity: 0.22 },
+  style: function (f) {
+    return isRoadless(f)
+      ? { color: ROADLESS_COLOR, weight: 2.5, opacity: 1,
+          fillColor: ROADLESS_COLOR, fillOpacity: 0.35 }
+      : { color: ACCENT, weight: 1.5, opacity: 0.9,
+          fillColor: ACCENT, fillOpacity: 0.22 };
+  },
   onEachFeature: function (f, layer) { layer.bindPopup(popupHtml(f.properties)); }
 }).addTo(map);
 
@@ -466,6 +480,7 @@ def main():
     args = parser.parse_args()
     key = carto_key(args.carto_key)
     overlay = None if args.no_heatmap else build_heatmap_overlay()
+    roadless = {f"{x}/{y}" for x, y in squadrats.load_roadless()}
 
     with open(args.geojson, "r") as f:
         squadrats_fc = json.load(f)
@@ -481,6 +496,8 @@ def main():
         .replace("__TOWN_STATS__", json.dumps(stats, separators=(",", ":")))
         .replace("__META__", json.dumps(meta, separators=(",", ":")))
         .replace("__ACCENT__", SQUADRAT_COLOR)
+        .replace("__ROADLESS_COLOR__", ROADLESS_COLOR)
+        .replace("__ROADLESS__", json.dumps(sorted(roadless), separators=(",", ":")))
         .replace("__HEAT_BANDS__", json.dumps(coverage_bands.legend_pairs(), separators=(",", ":")))
         .replace("__HEATMAP__", json.dumps(overlay, separators=(",", ":")))
         .replace("__CARTO_SUFFIX__", f"?key={key}" if key else "")

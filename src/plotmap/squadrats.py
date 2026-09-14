@@ -31,6 +31,14 @@ SQUADRAT_COLOR = "#d000d0"  # magenta, stands out over the heatmap palette
 SQUADRAT_LINEWIDTH = 1.5
 SQUADRAT_ALPHA = 0.7
 
+# Tiles whose Connecticut part holds no walkable road at all. Still counted as
+# squadrats, but drawn apart from the rest: "nothing here to walk" is a
+# different problem from "not walked yet", and worth being able to see.
+ROADLESS_COLOR = "#8b0000"      # dark red against the magenta of the others
+ROADLESS_LINEWIDTH = 2.0
+ROADLESS_CSV = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            "roadless_squadrats.csv")
+
 # Fill styling for contiguous regions of 2+ unwalked tiles.
 CLUSTER_FILL_COLOR = "#d000d0"  # same hue as the outlines, translucent fill
 CLUSTER_FILL_ALPHA = 0.22       # low enough that the heatmap reads through
@@ -214,6 +222,25 @@ def draw_squadrat_tiles(ax, tiles, z=Z, bbox=None,
     )
     ax.add_collection(pc)
     return len(patches)
+
+
+def load_roadless(path=ROADLESS_CSV, z=Z):
+    """Tiles with no walkable road in their Connecticut part, as {(x, y)}.
+
+    Written by find_unreachable_squadrats.py. A missing file just means the
+    analysis has not been run, so nothing is highlighted.
+    """
+    if not os.path.exists(path):
+        return set()
+
+    with open(path, "r", newline="") as f:
+        rows = csv.DictReader(line for line in f if not line.lstrip().startswith("#"))
+        return {(int(r["x"]), int(r["y"])) for r in rows if int(r["z"]) == z}
+
+
+def roadless_legend_patch(label="No road in the CT part"):
+    """A legend handle matching the roadless outline style."""
+    return Patch(facecolor='none', edgecolor=ROADLESS_COLOR, label=label)
 
 
 def legend_patch(label="Unwalked tile"):

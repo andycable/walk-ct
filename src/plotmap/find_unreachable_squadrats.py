@@ -45,6 +45,7 @@ import ct_outline
 import squadrats
 
 BORDER_CSV = "border_squadrats.csv"
+ROADLESS_CSV = "roadless_squadrats.csv"
 ROAD_CACHE = "road_network_cache.json"
 # The main Overpass instance rate-limits and times out hard on a run of
 # requests like this one, so rotate mirrors rather than hammering one.
@@ -213,14 +214,39 @@ def build_graph(ways, mainland):
 
 
 def walked_components(comps, node_points, walked_lat, walked_lon):
-    """Component roots that contain ground already walked."""
-    tree = STRtree([Point(lon, lat) for lon, lat in zip(walked_lon, walked_lat)])
+    """Component roots that contain ground already walked.
 
-    roots = set()
-    for node_id, (lon, lat) in node_points.items():
-        if len(tree.query(Point(lon, lat).buffer(WALKED_SNAP_DEG))):
-            roots.add(comps.find(node_id))
-    return roots
+    A KD-tree over the walked points, queried for every Connecticut node in one
+    vectorised call. Doing this as an STRtree of 1.75M shapely Points with a
+    buffered query per node instead took long enough to look hung.
+    """
+    from scipy.spatial import cKDTree
+
+    tree = cKDTree(np.column_stack([walked_lon, walked_lat]))
+    ids = list(node_points)
+    coords = np.array([node_points[n] for n in ids])
+
+    near = tree.query_ball_point(coords, WALKED_SNAP_DEG, return_length=True)
+    return {comps.find(ids[i]) for i in np.nonzero(near)[0]}
+
+
+def write_roadless(tiles, path=ROADLESS_CSV):
+    """Record tiles whose Connecticut part holds no walkable road at all.
+
+    Not a ruling. These are still counted as squadrats - they are written out
+    so the maps can draw them apart from the ordinary unwalked ones, because
+    "nothing here to walk" is a different problem from "not walked yet".
+    """
+    with open(path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["x", "y", "z", "center_lat", "center_lon"])
+        for x, y in sorted(tiles):
+            lon_w, lon_e, lat_s, lat_n = squadrats.tile_bounds(x, y)
+            writer.writerow([x, y, squadrats.Z,
+                             f"{(lat_s + lat_n) / 2:.6f}",
+                             f"{(lon_w + lon_e) / 2:.6f}"])
+    print(f"\nWrote {path} ({len(tiles)} tiles with no walkable road in CT)")
+    return tiles
 
 
 def main():
@@ -312,6 +338,8 @@ def main():
     print(f"  unproven (runs off the edge): {len(unproven)}")
     for tile in unproven:
         print(f"      {tile} - widen BUFFER_DEG and rerun to settle it")
+
+    write_roadless(roadless)
 
     rulings = ([(t, "island in Long Island Sound, no mainland road access")
                 for t in island_tiles]
