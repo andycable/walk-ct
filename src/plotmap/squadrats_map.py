@@ -17,6 +17,7 @@ their tile usage policy.
 import argparse
 import csv
 import json
+import os
 
 from shapely.geometry import shape, mapping
 
@@ -30,6 +31,25 @@ GEOJSON_IN = "squadrats_z14.geojson"
 TOWNS_GEOJSON = ct_outline.SHORELINE_GEOJSON
 TOWN_CSV = "squadrats_by_town.csv"
 OUTPUT_HTML = "squadrats_map.html"
+
+# CARTO raster basemaps now require an API key (and CARTO is retiring raster
+# in favour of vector, so expect this to need revisiting). The key is read from
+# the CARTO environment variable and baked into the generated HTML, which is
+# committed - a deliberate choice, not an oversight.
+CARTO_KEY_ENV = "CARTO"
+CARTO_STYLES = {"voyager": "Streets", "light_all": "Light", "dark_all": "Dark"}
+
+
+def carto_key(explicit=None):
+    """The CARTO basemap key, from --carto-key or the CARTO env var."""
+    key = explicit or os.environ.get(CARTO_KEY_ENV, "")
+    if not key:
+        print(f"WARNING: no {CARTO_KEY_ENV} environment variable and no "
+              f"--carto-key given.")
+        print(f"         Basemap tiles will be watermarked, and regenerating "
+              f"this way")
+        print(f"         strips the key out of {OUTPUT_HTML}.")
+    return key
 
 # Census filler polygons (open water) carried in the town boundary file.
 SKIP_TOWNS = {"County subdivisions not defined"}
@@ -175,19 +195,21 @@ var map = L.map('map').setView([41.6, -72.7], 9);
 var OSM_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 var CARTO_ATTR = OSM_ATTR + ' &copy; <a href="https://carto.com/attributions">CARTO</a>';
 
-var streets = L.tileLayer(
-  'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
-  { maxZoom: 20, subdomains: 'abcd', attribution: CARTO_ATTR }
-).addTo(map);
-var light = L.tileLayer(
-  'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-  { maxZoom: 20, subdomains: 'abcd', attribution: CARTO_ATTR }
-);
+var CARTO_SUFFIX = '__CARTO_SUFFIX__';
+function cartoLayer(style) {
+  return L.tileLayer(
+    'https://basemaps.cartocdn.com/rastertiles/' + style + '/{z}/{x}/{y}.png' + CARTO_SUFFIX,
+    { maxZoom: 20, attribution: CARTO_ATTR }
+  );
+}
+var streets = cartoLayer('voyager').addTo(map);
+var light = cartoLayer('light_all');
+var dark = cartoLayer('dark_all');
 var sat = L.tileLayer(
   'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
   { maxZoom: 19, attribution: 'Imagery &copy; Esri' }
 );
-L.control.layers({ 'Streets': streets, 'Light': light, 'Satellite': sat },
+L.control.layers({ 'Streets': streets, 'Light': light, 'Dark': dark, 'Satellite': sat },
                  null, { position: 'topright' }).addTo(map);
 
 function popupHtml(p) {
@@ -306,7 +328,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--geojson", default=GEOJSON_IN, help=f"input tiles (default {GEOJSON_IN})")
     parser.add_argument("--output", default=OUTPUT_HTML, help=f"output HTML (default {OUTPUT_HTML})")
+    parser.add_argument("--carto-key", default=None,
+                        help="CARTO basemap key (default: the CARTO environment variable)")
     args = parser.parse_args()
+    key = carto_key(args.carto_key)
 
     with open(args.geojson, "r") as f:
         squadrats_fc = json.load(f)
@@ -322,6 +347,7 @@ def main():
         .replace("__TOWN_STATS__", json.dumps(stats, separators=(",", ":")))
         .replace("__META__", json.dumps(meta, separators=(",", ":")))
         .replace("__ACCENT__", SQUADRAT_COLOR)
+        .replace("__CARTO_SUFFIX__", f"?key={key}" if key else "")
     )
 
     with open(args.output, "w", encoding="utf-8") as f:
