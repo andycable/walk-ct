@@ -57,23 +57,42 @@ def earned_tiles(lats, lons, z=Z):
 def region_tiles(geom, z=Z, sample_step_deg=0.004, votes=None):
     """Return the set of (x, y) z-tiles that overlap the given polygon.
 
-    Overlap is approximated by densely sampling points inside the polygon and
-    mapping each to its tile. sample_step_deg must be well below the tile size
-    (~0.022 deg at z14) so every overlapping tile gets at least one hit.
+    A tile counts if any part of it overlaps geom, measured exactly.
+    sample_step_deg is accepted for backwards compatibility and ignored.
 
     votes overrides the geometry for tiles a human has ruled on. It defaults to
     whatever load_votes() finds in VOTES_CSV, so every caller gets the rulings
     without asking; pass votes={} to ignore the file and see the raw geometry.
     """
-    minx, miny, maxx, maxy = geom.bounds
-    lons = np.arange(minx, maxx + sample_step_deg, sample_step_deg)
-    lats = np.arange(miny, maxy + sample_step_deg, sample_step_deg)
-    lon_grid, lat_grid = np.meshgrid(lons, lats)
-
-    inside = contains_xy(geom, lon_grid.ravel(), lat_grid.ravel())
-    tiles = earned_tiles(lat_grid.ravel()[inside], lon_grid.ravel()[inside], z)
+    tiles = {t for t, _ in _overlapping(geom, z).items()}
 
     return apply_votes(tiles, load_votes(z=z) if votes is None else votes)
+
+
+def _overlapping(geom, z=Z):
+    """{(x, y): fraction_inside} for every tile with any overlap with geom.
+
+    Measured exactly. This used to sample points on a 0.004 deg lattice, which
+    silently dropped 39 tiles whose sliver of Connecticut happened to contain
+    no sample point -- tiles that border_squadrats.csv listed for adjudication
+    but that never appeared on any map, so ruling on them did nothing.
+    """
+    from shapely.geometry import box
+
+    minx, miny, maxx, maxy = geom.bounds
+    x_lo, y_lo = tile_at(maxy, minx, z)
+    x_hi, y_hi = tile_at(miny, maxx, z)
+
+    found = {}
+    for x in range(x_lo, x_hi + 1):
+        for y in range(y_lo, y_hi + 1):
+            lon_w, lon_e, lat_s, lat_n = tile_bounds(x, y, z)
+            rect = box(lon_w, lat_s, lon_e, lat_n)
+            overlap = rect.intersection(geom).area
+            if overlap > 0:
+                found[(x, y)] = overlap / rect.area
+
+    return found
 
 
 def unwalked_tiles(walked_lats, walked_lons, geom, z=Z, sample_step_deg=0.004,
@@ -138,25 +157,7 @@ def border_tiles(geom, z=Z, full=0.999999):
     missed. Tiles at or above `full` are counted as wholly inside and omitted,
     as are tiles with no overlap at all.
     """
-    from shapely.geometry import box
-
-    minx, miny, maxx, maxy = geom.bounds
-    x_lo, y_lo = tile_at(maxy, minx, z)
-    x_hi, y_hi = tile_at(miny, maxx, z)
-
-    straddlers = {}
-    for x in range(x_lo, x_hi + 1):
-        for y in range(y_lo, y_hi + 1):
-            lon_w, lon_e, lat_s, lat_n = tile_bounds(x, y, z)
-            rect = box(lon_w, lat_s, lon_e, lat_n)
-            overlap = rect.intersection(geom).area
-            if overlap <= 0:
-                continue
-            fraction = overlap / rect.area
-            if fraction < full:
-                straddlers[(x, y)] = fraction
-
-    return straddlers
+    return {t: f for t, f in _overlapping(geom, z).items() if f < full}
 
 
 def _tile_lat(y, n):

@@ -12,3 +12,19 @@
 x,y,z,include,center_lat,center_lon,note
 4879,6080,14,0,42.024813,-72.784424,"Southwick Jog - the notch is Massachusetts, not CT"
 4907,6124,14,0,41.302571,-72.169189,"Millstone Point south - mostly Sound, the land is restricted plant grounds"
+#
+# Sub-5% border slivers with no walkable public road in the Connecticut
+# part, so they cannot be earned on foot. Road data from OpenStreetMap,
+# checked 2026-09-14; acreage is the CT portion of the tile.
+4917,6123,14,0,41.319075,-71.949463,"Stonington border sliver: 27.23 acres in CT, no walkable public road - unearnable"
+4852,6139,14,0,41.054501,-73.377686,"Norwalk border sliver: 13.62 acres in CT, no walkable public road - unearnable"
+4844,6119,14,0,41.385051,-73.553467,"Danbury border sliver: 12.93 acres in CT, no walkable public road - unearnable"
+4890,6079,14,0,42.041133,-72.542725,"Enfield border sliver: 12.06 acres in CT, no walkable public road - unearnable"
+4904,6125,14,0,41.286062,-72.235107,"East Lyme border sliver: 3.53 acres in CT, no walkable public road - unearnable"
+4845,6104,14,0,41.631867,-73.531494,"Sherman border sliver: 2.89 acres in CT, no walkable public road - unearnable"
+4882,6128,14,0,41.236511,-72.718506,"Guilford border sliver: 1.26 acres in CT, no walkable public road - unearnable"
+4922,6123,14,0,41.319075,-71.839600,"Stonington border sliver: 1.18 acres in CT, no walkable public road - unearnable"
+4852,6078,14,0,42.057450,-73.377686,"Salisbury border sliver: 0.92 acres in CT, no walkable public road - unearnable"
+4837,6139,14,0,41.054501,-73.707275,"Greenwich border sliver: 0.86 acres in CT, no walkable public road - unearnable"
+4840,6133,14,0,41.153842,-73.641357,"Stamford border sliver: 0.06 acres in CT, no walkable public road - unearnable"
+4900,6126,14,0,41.269549,-72.322998,"Old Lyme border sliver: 0.02 acres in CT, no walkable public road - unearnable"

@@ -43,7 +43,6 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = REPO_ROOT / "data"
 
 GRID = 0.001                 # lattice spacing in degrees
-STATE_BOUNDARY = "ct_boundary.json"
 TOWNS_GEOJSON = "ct_towns.geojson"
 DEFAULT_OUT = "Distance_3_ct.csv"
 

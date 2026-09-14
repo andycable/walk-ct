@@ -35,8 +35,6 @@ CT_BBOX = {
     'lon_max': -71.79,
 }
 
-BOUNDARY_CACHE = "ct_boundary.json"
-TOWNS_CACHE = "ct_towns.json"
 
 
 def get_ct_boundary(source="shoreline"):

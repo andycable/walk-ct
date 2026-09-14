@@ -1,55 +1,37 @@
 """
 Clip Distance_3.csv to only points within Connecticut's boundary.
 
-Downloads the Connecticut state boundary from the US Census Bureau
-cartographic boundary files, then filters the CSV to points inside
-the polygon. Outputs Distance_3_ct.csv.
+Filters the CSV to points inside the state and writes Distance_3_ct.csv.
+
+This is the legacy path, kept for the SQL-derived Distance_3.csv.
+distance_from_parquet.py builds the same output straight from the parquet
+files and is the one do_current_month.bat runs.
 """
 
-import json
-import urllib.request
+import argparse
+
 import numpy as np
 import pandas as pd
-from shapely.geometry import shape, Point, MultiPolygon
-from shapely.prepared import prep
+from shapely import contains_xy
 
-BOUNDARY_URL = (
-    "https://raw.githubusercontent.com/PublicaMundi/"
-    "MappingAPI/master/data/geojson/us-states.json"
-)
-BOUNDARY_CACHE = "ct_boundary.json"
+import ct_outline
+
 INPUT_CSV = "Distance_3.csv"
 OUTPUT_CSV = "Distance_3_ct.csv"
 
 
-def get_ct_boundary():
-    """Download US states GeoJSON and extract Connecticut polygon."""
-    import os
-    if os.path.exists(BOUNDARY_CACHE):
-        print(f"Loading cached boundary from {BOUNDARY_CACHE}")
-        with open(BOUNDARY_CACHE, 'r') as f:
-            geom = json.load(f)
-        return shape(geom)
-
-    print("Downloading US states GeoJSON...")
-    with urllib.request.urlopen(BOUNDARY_URL) as resp:
-        data = json.loads(resp.read().decode())
-
-    for feature in data['features']:
-        if feature['properties']['name'] == 'Connecticut':
-            geom = feature['geometry']
-            # Cache for future runs
-            with open(BOUNDARY_CACHE, 'w') as f:
-                json.dump(geom, f)
-            print(f"Cached CT boundary to {BOUNDARY_CACHE}")
-            return shape(geom)
-
-    raise ValueError("Connecticut not found in GeoJSON")
-
-
 def main():
-    ct_poly = get_ct_boundary()
-    ct_prepared = prep(ct_poly)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--boundary", choices=("shoreline", "towns", "state"),
+                        default="shoreline",
+                        help="shoreline = town outlines clipped to the coast "
+                             "(default, matches the rest of the maps); towns = "
+                             "adds each coastal town's water jurisdiction; "
+                             "state = the old 16-point outline")
+    args = parser.parse_args()
+
+    ct_poly = ct_outline.ct_outline(args.boundary)
+    print(f"Boundary: {args.boundary} outline")
 
     print(f"Loading {INPUT_CSV}...")
     df = pd.read_csv(INPUT_CSV, low_memory=False)
@@ -59,12 +41,8 @@ def main():
     df = df.dropna()
     print(f"  Loaded {len(df)} points")
 
-    # Vectorized point-in-polygon using shapely prepared geometry
     print("Filtering points inside Connecticut...")
     coords = np.column_stack([df['long'].values, df['lat'].values])
-
-    # Use shapely.contains_xy for fast vectorized point-in-polygon
-    from shapely import contains_xy
     inside = contains_xy(ct_poly, coords[:, 0], coords[:, 1])
 
     df_ct = df[inside].copy()
