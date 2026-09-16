@@ -32,7 +32,6 @@ Franklin,12,2,14,85.7
 Brooklyn,19,3,22,86.4
 Burlington,19,3,22,86.4
 Granby,32,5,37,86.5
-Brookfield,13,2,15,86.7
 Old Saybrook,13,2,15,86.7
 Scotland,13,2,15,86.7
 Norfolk,33,5,38,86.8
@@ -70,6 +69,7 @@ East Lyme,26,2,28,92.9
 Chester,13,1,14,92.9
 Hebron,27,2,29,93.1
 Tolland,27,2,29,93.1
+Brookfield,14,1,15,93.3
 Westbrook,14,1,15,93.3
 Torrington,30,2,32,93.8
 Chaplin,15,1,16,93.8
@@ -83,7 +83,6 @@ Stratford,17,1,18,94.4
 New Canaan,18,1,19,94.7
 Kent,37,2,39,94.9
 Eastford,20,1,21,95.2
-New Fairfield,20,1,21,95.2
 Salem,20,1,21,95.2
 Wilton,21,1,22,95.5
 Preston,22,1,23,95.7
@@ -137,6 +136,7 @@ Monroe,20,0,20,100.0
 Morris,11,0,11,100.0
 Naugatuck,13,0,13,100.0
 New Britain,10,0,10,100.0
+New Fairfield,21,0,21,100.0
 New Haven,18,0,18,100.0
 New London,4,0,4,100.0
 North Branford,18,0,18,100.0

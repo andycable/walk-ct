@@ -11,6 +11,12 @@ python distance_from_parquet.py
 python gerrymander_metrics.py
 python export_squadrats.py
 python squadrats_map.py
+REM Tiles first, then the page: nearest_map.py bakes the tile geometry and the
+REM activity table into index.html, so rebuilding one without the other leaves
+REM the page pointing at tiles that no longer match it.
+python nearest_tiles.py
+python nearest_map.py
 
 : heatmap.png
 : squadrats_map.html
+: connecticut-ultrawalker\index.html
