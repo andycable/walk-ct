@@ -52,12 +52,16 @@ Four traps this module exists to keep in one place:
     town the generalized boundary happens to split in two loses its smaller
     half, which is dry land. So the mainland is found once, globally, and the
     coastal towns are intersected with it.
-  - ct_towns.geojson IS MISSING MADISON. The file carries a feature named
-    Madison, but it is a 0.005 sq mi sliver at -72.601, 41.266, and nothing in
-    the file covers the actual town - the shoreline file has it correctly at
-    36.7 sq mi. Clipping to the mainland would therefore delete Madison from
-    the "towns" source outright, so _drop_islands keeps a town it cannot clip
-    and says so. Another reason "towns" is not the default.
+  - a town can vanish from a source file with nothing saying so.
+    ct_towns.geojson used to carry a Madison that was a 0.005 sq mi sliver at
+    -72.601, 41.266, with nothing in the file covering the actual town. TIGER
+    has Madison as two separate polygons, and fetch_town_boundaries.py was
+    folding every shapefile part into one GeoJSON ring list, which makes
+    everything after the first a HOLE. Fixed at the source, and Madison is
+    36.6 sq mi again - but _drop_islands still keeps a town it cannot clip and
+    warns, rather than silently returning 168. Connecticut has no island-only
+    town, so that warning firing again means some source file has gone the
+    same way, and a count that quietly drops by one is what nobody notices.
 """
 
 import json

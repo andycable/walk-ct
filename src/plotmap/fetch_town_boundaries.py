@@ -3,6 +3,23 @@ Fetch Connecticut town (county subdivision) boundaries from Census Bureau.
 
 Downloads TIGER/Line data and converts to GeoJSON format.
 Saves as ct_towns.geojson for use in heatmap.py
+
+A SHAPEFILE PART IS NOT A GEOJSON RING. This script used to assume it was:
+it walked shape.parts and appended every one to a single Polygon's coordinate
+list. In GeoJSON the rings after the first are HOLES, so any record with more
+than one part came out as its first part with the rest punched out of it.
+
+Connecticut has exactly one town that this wrecks, and it wrecked it totally.
+Madison is two parts in TIGER 2023 - a 0.005 sq mi sliver at -72.601, 41.266
+and the actual 36.6 sq mi town - and both rings are clockwise, which in the
+shapefile convention means both are EXTERIOR. It is a MultiPolygon. Treating
+part 1 as a hole in part 0 left ct_towns.geojson with a Madison that was only
+the sliver, and no feature in the file covering the town at all: every point
+lookup over downtown Madison landed in no town.
+
+pyshp already gets this right, so the parts loop is gone and the geometry now
+comes from shape.__geo_interface__, which returns Polygon or MultiPolygon as
+the record actually warrants.
 """
 
 import json
@@ -22,7 +39,12 @@ OUTPUT_GEOJSON = "ct_towns.geojson"
 
 
 def fetch_and_convert():
-    """Download Census TIGER/Line file and convert to GeoJSON."""
+    """Convert the Census TIGER/Line county subdivisions to GeoJSON.
+
+    Uses tl_2023_09_cousub.* if it is already here - those three files are
+    committed - and only goes to the Census when it is not. Re-downloading a
+    file the repo already carries is a slow way to get the same bytes.
+    """
     try:
         import shapefile
     except ImportError:
@@ -30,21 +52,26 @@ def fetch_and_convert():
         print("Alternative: Download ct_towns.geojson from GitHub manually")
         return False
 
-    print(f"Downloading Census TIGER/Line data from {CENSUS_URL}...")
-    try:
-        with urllib.request.urlopen(CENSUS_URL) as resp:
-            zip_data = io.BytesIO(resp.read())
-    except Exception as e:
-        print(f"Failed to download: {e}")
-        return False
+    downloaded = False
+    if Path(f"{TEMP_SHAPEFILE}.shp").exists():
+        print(f"Using the local {TEMP_SHAPEFILE}.shp")
+    else:
+        print(f"Downloading Census TIGER/Line data from {CENSUS_URL}...")
+        try:
+            with urllib.request.urlopen(CENSUS_URL) as resp:
+                zip_data = io.BytesIO(resp.read())
+        except Exception as e:
+            print(f"Failed to download: {e}")
+            return False
 
-    print("Extracting shapefile...")
-    try:
-        with zipfile.ZipFile(zip_data, 'r') as zf:
-            zf.extractall(".")
-    except Exception as e:
-        print(f"Failed to extract: {e}")
-        return False
+        print("Extracting shapefile...")
+        try:
+            with zipfile.ZipFile(zip_data, 'r') as zf:
+                zf.extractall(".")
+            downloaded = True
+        except Exception as e:
+            print(f"Failed to extract: {e}")
+            return False
 
     print("Converting to GeoJSON...")
     try:
@@ -67,17 +94,13 @@ def fetch_and_convert():
             if not town_name:
                 continue
 
-            # Convert shapefile geometry to GeoJSON
-            geom_type = shape.shapeType
-            if geom_type in (5, 15):  # Polygon or PolygonM
-                # Build coordinates from parts
-                parts = list(shape.parts) + [len(shape.points)]
-                coords = []
-                for start, end in zip(parts[:-1], parts[1:]):
-                    ring = [[pt[0], pt[1]] for pt in shape.points[start:end]]
-                    coords.append(ring)
-                geom = {"type": "Polygon", "coordinates": coords}
-            else:
+            # Geometry straight from pyshp, which groups parts into rings and
+            # polygons by their orientation. Do NOT hand-roll this from
+            # shape.parts - see the module docstring for what that cost.
+            if shape.shapeType not in (5, 15):      # Polygon, PolygonM
+                continue
+            geom = shape.__geo_interface__
+            if geom["type"] not in ("Polygon", "MultiPolygon"):
                 continue
 
             feature = {
@@ -105,20 +128,26 @@ def fetch_and_convert():
         traceback.print_exc()
         return False
     finally:
-        # Cleanup temp files
-        import glob
-        import os
-        for pattern in [f"{TEMP_SHAPEFILE}.*"]:
-            for f in glob.glob(pattern):
+        # Only ever delete a shapefile THIS RUN downloaded. tl_2023_09_cousub.*
+        # is committed to the repo, and the old unconditional cleanup deleted
+        # all three tracked files on every run.
+        if downloaded:
+            import glob
+            import os
+            for f in glob.glob(f"{TEMP_SHAPEFILE}.*"):
                 try:
                     os.remove(f)
-                except:
+                except OSError:
                     pass
 
 
 if __name__ == "__main__":
-    if Path(OUTPUT_GEOJSON).exists():
+    import sys
+
+    force = "--force" in sys.argv
+    if Path(OUTPUT_GEOJSON).exists() and not force:
         print(f"{OUTPUT_GEOJSON} already exists. Skipping download.")
+        print("Pass --force to rebuild it from the shapefile.")
     else:
         success = fetch_and_convert()
         if not success:
