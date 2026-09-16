@@ -47,6 +47,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 ACTIVITY_GLOB = str(REPO_ROOT / "activities" / "activities_*.parquet")
 DEFAULT_OUT = REPO_ROOT / "connecticut-ultrawalker" / "tiles"
 
+# The Strava bulk export's own index, used here only to repair activity ids.
+STRAVA_METADATA_CSV = Path(r"C:\export_55533644\activities.csv")
+
 # Connecticut plus a buffer. The buffer is not cosmetic: the nearest walked
 # point to a Greenwich or Enfield address is regularly over the state line, and
 # clipping to the boundary would report a longer distance than the truth.
@@ -81,6 +84,42 @@ def load_points():
     return df
 
 
+def strava_id_map(path=STRAVA_METADATA_CSV):
+    """Parquet activity_id -> the real Strava activity id.
+
+    The parquet files do not hold Strava activity ids. Both extractors take the
+    id from the export FILENAME (extract_to_parquet.py line 253,
+    summarize_current_month.py line 269), and for a .fit.gz Strava names the
+    file after the UPLOAD id, which is a different number: the Cheshire walk of
+    2024-08-20 is activity 12194819959 in activities/13001082611.fit.gz. It
+    disagrees for 657 of 1,803 rows, 36%.
+
+    That was invisible until this page turned the id into a link, and it is
+    only fixed here - the parquet still carries the upload id, which would take
+    a full re-extraction to correct. Names and dates were always right; the
+    extractors key metadata by filename stem precisely because of this
+    mismatch, they just never write the id back.
+
+    Returns {} if the export index is missing, which leaves the ids as they
+    were rather than failing the build.
+    """
+    if not path.exists():
+        print(f"WARNING: {path} not found - Strava links will use the upload "
+              f"ids in the parquet, which are wrong for about a third of them.")
+        return {}
+
+    meta = pd.read_csv(path, usecols=["Activity ID", "Filename"])
+    fixes = {}
+    for aid, fname in meta.itertuples(index=False):
+        if not isinstance(fname, str):
+            continue
+        stem = Path(fname).stem.split(".")[0]
+        if stem.isdigit() and int(stem) != int(aid):
+            fixes[int(stem)] = int(aid)
+    print(f"{len(fixes):,} activity ids repaired from {path.name}")
+    return fixes
+
+
 def activity_table(df):
     """One row per activity, and the per-point index into it.
 
@@ -103,8 +142,10 @@ def activity_table(df):
     code = pd.Series(meta.index.values, index=meta.activity_id.values)
     idx = df.activity_id.map(code).to_numpy(dtype=np.int64)
 
+    fixes = strava_id_map()
     rows = []
     for aid, date, name in meta.itertuples(index=False):
+        aid = fixes.get(int(aid), int(aid))
         name = "" if pd.isna(name) else str(name).strip()
         # The FIT half of the archive is named after the activity id, which
         # tells a reader nothing the date and the link do not already say.
