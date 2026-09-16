@@ -16,8 +16,6 @@ This script:
 Output: Gerrymander_Map.png
 """
 
-import json
-
 import grid_extent
 
 import ct_outline
@@ -192,29 +190,27 @@ def color_gerrymanders(regions, adjacency):
     return assigned
 
 
+def _rings(geom):
+    """Every ring, exterior and interior, of a Polygon or MultiPolygon."""
+    for part in getattr(geom, "geoms", [geom]):
+        yield list(part.exterior.coords)
+        for hole in part.interiors:
+            yield list(hole.coords)
+
+
 def load_town_lines():
-    """Return list of (lons, lats) polygon rings for every CT town boundary."""
+    """Return list of (lons, lats) polygon rings for every CT town boundary.
+
+    Via ct_outline, so the islands are gone: drawing them put a scatter of
+    specks in Long Island Sound on a map about unwalked pockets on land.
+    """
     if not Path(TOWNS_GEOJSON).exists():
         print(f"Warning: {TOWNS_GEOJSON} not found - skipping town boundaries.")
         return []
-    with open(TOWNS_GEOJSON, "r") as f:
-        gj = json.load(f)
     lines = []
-    for feature in gj.get("features", []):
-        geom = feature.get("geometry", {})
-        gtype = geom.get("type")
-        coords = geom.get("coordinates", [])
-        if gtype == "Polygon":
-            polys = [coords]
-        elif gtype == "MultiPolygon":
-            polys = coords
-        else:
-            continue
-        for poly in polys:
-            for ring in poly:
-                lons = [pt[0] for pt in ring]
-                lats = [pt[1] for pt in ring]
-                lines.append((lons, lats))
+    for _, geom in ct_outline.shoreline_polygons(TOWNS_GEOJSON):
+        for ring in _rings(geom):
+            lines.append(([pt[0] for pt in ring], [pt[1] for pt in ring]))
     return lines
 
 
@@ -239,28 +235,13 @@ def load_town_labels():
     """Return list of (name, lon, lat) at each CT town's centroid (its largest ring)."""
     if not Path(TOWNS_GEOJSON).exists():
         return []
-    with open(TOWNS_GEOJSON, "r") as f:
-        gj = json.load(f)
     labels = []
-    for feature in gj.get("features", []):
-        name = feature.get("properties", {}).get("name")
-        geom = feature.get("geometry", {})
-        gtype = geom.get("type")
-        coords = geom.get("coordinates", [])
-        if not name or "not defined" in name.lower():
-            continue
-        if gtype == "Polygon":
-            polys = [coords]
-        elif gtype == "MultiPolygon":
-            polys = coords
-        else:
-            continue
-        # Use the exterior ring of the largest-perimeter polygon part.
+    for name, geom in ct_outline.shoreline_polygons(TOWNS_GEOJSON):
+        # The exterior ring of the largest-perimeter part. Islands are already
+        # clipped off upstream, so this no longer has to out-vote them.
         best_ring, best_len = None, -1
-        for poly in polys:
-            if not poly:
-                continue
-            ring = poly[0]
+        for part in getattr(geom, "geoms", [geom]):
+            ring = list(part.exterior.coords)
             if len(ring) > best_len:
                 best_ring, best_len = ring, len(ring)
         if best_ring is None:

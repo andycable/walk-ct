@@ -192,26 +192,18 @@ def build_town_lookup():
     if not Path(TOWNS_GEOJSON).exists():
         return None
     try:
-        import json
-
-        from shapely.geometry import Point, shape
+        from shapely.geometry import Point
         from shapely.strtree import STRtree
+
+        # Inside the guard: ct_outline imports shapely at module level, so it
+        # is exactly as optional as shapely is.
+        import ct_outline
     except ImportError:
         print("Note: shapely not available - skipping town lookup.")
         return None
 
-    with open(TOWNS_GEOJSON, "r") as f:
-        gj = json.load(f)
-
     names, polys = [], []
-    for feature in gj.get("features", []):
-        name = feature.get("properties", {}).get("name")
-        if not name or "not defined" in name.lower():
-            continue
-        try:
-            geom = shape(feature["geometry"])
-        except (KeyError, ValueError):
-            continue
+    for name, geom in ct_outline.shoreline_polygons(TOWNS_GEOJSON):
         if geom.is_empty:
             continue
         names.append(name)

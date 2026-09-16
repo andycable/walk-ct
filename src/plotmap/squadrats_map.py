@@ -23,7 +23,7 @@ import math
 import os
 from pathlib import Path
 
-from shapely.geometry import shape, mapping
+from shapely.geometry import mapping
 
 import coverage_bands
 import ct_outline
@@ -33,7 +33,10 @@ GEOJSON_IN = "squadrats_z14.geojson"
 
 # The same outlines the tiles were clipped to. Drawing the water-inclusive
 # ct_towns.geojson here instead left the town borders hanging out in Long
-# Island Sound while the tiles stopped at the shore.
+# Island Sound while the tiles stopped at the shore. Read through ct_outline
+# rather than off the path, so these outlines lose the islands along with
+# everything else - parsing SHORELINE_GEOJSON here directly is what left the
+# Norwalk Islands drawn on a map whose tiles had already dropped them.
 TOWNS_GEOJSON = ct_outline.SHORELINE_GEOJSON
 TOWN_CSV = "squadrats_by_town.csv"
 OUTPUT_HTML = "squadrats_map.html"
@@ -79,16 +82,12 @@ ROADLESS_COLOR = "#8b0000"  # matches squadrats.ROADLESS_COLOR
 
 
 def load_towns_simplified(path=TOWNS_GEOJSON, tolerance=SIMPLIFY_DEG):
-    """Return a slimmed-down FeatureCollection of town outlines."""
-    with open(path, "r") as f:
-        fc = json.load(f)
-
+    """Return a slimmed-down FeatureCollection of town outlines, islands out."""
     features = []
-    for feat in fc["features"]:
-        name = feat["properties"].get("name")
-        if not name or name in SKIP_TOWNS:
+    for name, geom in ct_outline.shoreline_polygons(path):
+        if name in SKIP_TOWNS:
             continue
-        geom = shape(feat["geometry"]).simplify(tolerance, preserve_topology=True)
+        geom = geom.simplify(tolerance, preserve_topology=True)
         features.append({
             "type": "Feature",
             "properties": {"name": name},

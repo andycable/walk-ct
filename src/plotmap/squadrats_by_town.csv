@@ -38,6 +38,7 @@ Norfolk,33,5,38,86.8
 Suffield,33,5,38,86.8
 North Stonington,40,6,46,87.0
 Barkhamsted,27,4,31,87.1
+Guilford,35,5,40,87.5
 Coventry,28,4,32,87.5
 Sterling,21,3,24,87.5
 Bethlehem,14,2,16,87.5
@@ -51,11 +52,9 @@ Canton,16,2,18,88.9
 Hampton,16,2,18,88.9
 Newington,8,1,9,88.9
 Enfield,25,3,28,89.3
-Guilford,35,4,39,89.7
 Warren,18,2,20,90.0
 Easton,19,2,21,90.5
 Old Lyme,19,2,21,90.5
-Branford,20,2,22,90.9
 Sprague,10,1,11,90.9
 Bristol,21,2,23,91.3
 Farmington,21,2,23,91.3
@@ -82,6 +81,7 @@ Plymouth,17,1,18,94.4
 Stratford,17,1,18,94.4
 New Canaan,18,1,19,94.7
 Kent,37,2,39,94.9
+Branford,20,1,21,95.2
 Eastford,20,1,21,95.2
 Salem,20,1,21,95.2
 Wilton,21,1,22,95.5

@@ -28,10 +28,14 @@ def main():
                              "(default, matches the rest of the maps); towns = "
                              "adds each coastal town's water jurisdiction; "
                              "state = the old 16-point outline")
+    parser.add_argument("--islands", action="store_true",
+                        help="keep the offshore islands, which no walker can "
+                             "reach (default: mainland only)")
     args = parser.parse_args()
 
-    ct_poly = ct_outline.ct_outline(args.boundary)
-    print(f"Boundary: {args.boundary} outline")
+    ct_poly = ct_outline.ct_outline(args.boundary, islands=args.islands)
+    print(f"Boundary: {args.boundary} outline, "
+          f"{'islands included' if args.islands else 'mainland only'}")
 
     print(f"Loading {INPUT_CSV}...")
     df = pd.read_csv(INPUT_CSV, low_memory=False)

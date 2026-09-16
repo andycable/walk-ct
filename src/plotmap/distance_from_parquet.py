@@ -99,15 +99,20 @@ def load_walked(until=None, precision=5):
     return walked
 
 
-def load_boundary(which):
+def load_boundary(which, islands=False):
     """Connecticut outline as a list of (exterior, holes) ring arrays.
 
     The outline itself comes from ct_outline, so this script, heatmap.py and
     the squadrat exports all clip to the same Connecticut. It used to read the
     16-vertex ct_boundary.json, and its own "towns" option unioned every
     feature in ct_towns.geojson - Long Island Sound fillers included.
+
+    Islands are out by default, which is what makes the max of this file a
+    number about walking. With them in, 498 of the 1.24M cells sit on ground
+    no walker can reach and the worst of them - Chimon Island, off Norwalk -
+    owns the maximum at 2.38 mi against the mainland's 1.67.
     """
-    geom = ct_outline.ct_outline(which)
+    geom = ct_outline.ct_outline(which, islands=islands)
 
     polys = list(getattr(geom, "geoms", [geom]))
     rings = [(np.asarray(p.exterior.coords),
@@ -177,11 +182,14 @@ def main():
                          "(default, matches heatmap.py); towns = adds each "
                          "coastal town's water jurisdiction; state = the old "
                          "16-point outline")
+    ap.add_argument("--islands", action="store_true",
+                    help="keep the offshore islands, which no walker can "
+                         "reach (default: mainland only)")
     ap.add_argument("--out", default=DEFAULT_OUT)
     args = ap.parse_args()
 
     walked = load_walked(args.until, args.precision)
-    lat, lon = build_lattice(load_boundary(args.boundary))
+    lat, lon = build_lattice(load_boundary(args.boundary, args.islands))
     dist = compute(lat, lon, walked)
     lat, lon, dist = drop_walked_cells(lat, lon, dist, walked)
 

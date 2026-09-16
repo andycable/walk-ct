@@ -18,27 +18,29 @@ my_data <- read.csv(file_path) %>% select(long, lat, Dist) %>% filter(Dist < 3.5
 is_inside <- (point.in.polygon(my_data$long, my_data$lat, ct_map$long, ct_map$lat) != 0)
 my_ct_data <- filter(my_data, is_inside)
 
-# Create 0.25-mile distance bins
+# Create 0.25-mile distance bins.
+#
+# These stop at 1.50+ because the data does: once ct_outline started dropping
+# the offshore islands the maximum fell from 2.38 mi - Chimon Island, off
+# Norwalk, which no walker can reach - to 1.67 on the mainland. The old breaks
+# ran to "2.50+", and with drop = FALSE below that left four empty entries in
+# the legend and a red that nothing on the map was ever painted, so the whole
+# ramp read cooler than the coverage actually is.
 my_ct_data$dist_bin <- cut(my_ct_data$Dist,
-  breaks = c(0, 0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 2.25, 2.50, Inf),
+  breaks = c(0, 0.25, 0.50, 0.75, 1.00, 1.25, 1.50, Inf),
   labels = c("0 - 0.25", "0.25 - 0.50", "0.50 - 0.75", "0.75 - 1.00",
-             "1.00 - 1.25", "1.25 - 1.50", "1.50 - 1.75", "1.75 - 2.00",
-             "2.00 - 2.25", "2.25 - 2.50", "2.50+"),
+             "1.00 - 1.25", "1.25 - 1.50", "1.50+"),
   right = FALSE, include.lowest = TRUE)
 
 # Blue (close) -> Yellow -> Red (far) color ramp
 dist_colors <- c(
   "0 - 0.25"    = "#313695",
   "0.25 - 0.50" = "#4575b4",
-  "0.50 - 0.75" = "#74add1",
-  "0.75 - 1.00" = "#abd9e9",
-  "1.00 - 1.25" = "#e0f3f8",
-  "1.25 - 1.50" = "#fee090",
-  "1.50 - 1.75" = "#fdae61",
-  "1.75 - 2.00" = "#f46d43",
-  "2.00 - 2.25" = "#d73027",
-  "2.25 - 2.50" = "#a50026",
-  "2.50+"        = "#67001f"
+  "0.50 - 0.75" = "#abd9e9",
+  "0.75 - 1.00" = "#e0f3f8",
+  "1.00 - 1.25" = "#fee090",
+  "1.25 - 1.50" = "#f46d43",
+  "1.50+"       = "#a50026"
 )
 
 my_plot_dist <- ggplot() +

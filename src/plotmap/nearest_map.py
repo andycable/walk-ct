@@ -47,7 +47,14 @@ CT_BBOX = (40.95, 42.06, -73.75, -71.78)   # south, north, west, east
 # The furthest any point in Connecticut is from somewhere I have walked, in
 # miles, straight off Distance_3_ct.csv. It bounds the tile ring search and it
 # is the most quotable number on the page.
-MAX_CT_DISTANCE = 2.38
+#
+# It was 2.38 until ct_outline started dropping the islands, and the far corner
+# was Chimon Island off Norwalk - a number about boats, quoted on a page about
+# walking. The mainland answer is 1.67, in the Stafford woods up on the
+# Massachusetts line. Tapping an island still works: the ring search only gives
+# up past MAX_CT_DISTANCE * 3, which is 5.0 mi against the 2.38 an island tap
+# needs.
+MAX_CT_DISTANCE = 1.67
 
 
 def carto_key(explicit=None):
@@ -172,7 +179,8 @@ TEMPLATE = """<!doctype html>
     <b>__POINTS__</b> walked points from <b>__ACTIVITIES__</b> walks,
     __FIRST__ to __LAST__.<br>
     Nowhere in Connecticut is more than <b>__MAX_DIST__ mi</b> from one of
-    them - and the far corner is an island off Norwalk.
+    them - and the far corner is up in the Stafford woods, on the
+    Massachusetts line.
   </footer>
 </div>
 <div id="map"></div>

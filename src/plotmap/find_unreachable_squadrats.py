@@ -14,8 +14,11 @@ Two ways a tile can hold Connecticut ground that is no use to a walker:
               corner - you could stand on it, but not walk to it from
               Connecticut.
 
-The island test is geometry: the shoreline outline is a MultiPolygon and the
-mainland is simply its largest part.
+The island test is geometry, and it lives in ct_outline.mainland_and_islands:
+the shoreline outline is a MultiPolygon and the mainland is simply its largest
+part. ct_outline now drops the islands by default for everyone else, which
+makes these rulings belt-and-braces rather than the only thing keeping the
+Norwalk Islands out of the coverage numbers.
 
 The stranded test is graph connectivity, done on OSM node ids rather than by
 eye. Ways are cut to their runs of consecutive nodes inside Connecticut before
@@ -66,12 +69,6 @@ SKIP_ACCESS = {"private", "no"}
 
 # How close an OSM node must be to a walked point to count as walked ground.
 WALKED_SNAP_DEG = 0.0004      # ~40 m
-
-
-def mainland_and_islands(outline):
-    """Split the outline into (mainland polygon, union of the islands)."""
-    parts = sorted(getattr(outline, "geoms", [outline]), key=lambda p: -p.area)
-    return parts[0], (union_all(parts[1:]) if len(parts) > 1 else None)
 
 
 def candidates(path=BORDER_CSV, earned=frozenset()):
@@ -260,8 +257,10 @@ def main():
 
     from heatmap import load_walked_coordinates
 
-    outline = ct_outline.ct_outline(args.boundary)
-    mainland, islands = mainland_and_islands(outline)
+    # islands=True: every other caller wants them gone, but this script has
+    # to see an island before it can rule a tile out for being one.
+    outline = ct_outline.ct_outline(args.boundary, islands=True)
+    mainland, islands = ct_outline.mainland_and_islands(outline)
 
     walked = load_walked_coordinates(snap=False)   # tile edges fall anywhere
     walked_lat = walked["lat"].to_numpy()
