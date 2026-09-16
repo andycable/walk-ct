@@ -15,7 +15,10 @@
     --text: #e6e8ec;
     --dim: #9aa2b1;
     --accent: #d000d0;
+    /* Both are repainted by setBasemapTheme() when the basemap changes: the
+       sky blue and the white line vanish against Streets and Light. */
     --walked: #38bdf8;
+    --ink: #ffffff;
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
@@ -206,12 +209,55 @@ async function nearest(plat, plon) {
 
 /* ---- map ---- */
 const map = L.map('map', { zoomControl: true }).setView([41.6, -72.7], 9);
-L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=cb1_3kgi_1_5c21b3fe680ae02c1dd39617", { maxZoom: 19, attribution: "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OSM</a> &copy; <a href=\"https://carto.com/attributions\">CARTO</a>" }).addTo(map);
+
+/* The same four basemaps squadrats_map.html offers, defaulting to Streets for
+   the same reason: a dark basemap makes a street-level answer hard to read,
+   and the two pages should not disagree about what Connecticut looks like.
+
+   Each carries whether it is dark, because the marks drawn on top have to
+   flip with it - sky blue dots and a white leader line disappear on Streets,
+   and their dark counterparts disappear on Dark. */
+const CARTO_SUFFIX = '?key=cb1_3kgi_1_5c21b3fe680ae02c1dd39617';
+function cartoLayer(style) {
+  return L.tileLayer(
+    'https://basemaps.cartocdn.com/rastertiles/' + style + '/{z}/{x}/{y}.png' + CARTO_SUFFIX,
+    { maxZoom: 20, attribution: "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OSM</a> &copy; <a href=\"https://carto.com/attributions\">CARTO</a>" });
+}
+const BASEMAPS = {
+  'Streets': { layer: cartoLayer('voyager'), dark: false },
+  'Light': { layer: cartoLayer('light_all'), dark: false },
+  'Dark': { layer: cartoLayer('dark_all'), dark: true },
+  'Satellite': { layer: L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      { maxZoom: 19, attribution: 'Imagery &copy; Esri' }), dark: true },
+};
+const THEME = {
+  dark: { walked: '#38bdf8', ink: '#ffffff' },
+  light: { walked: '#0369a1', ink: '#1f2937' },
+};
+
+function setBasemapTheme(isDark) {
+  const t = isDark ? THEME.dark : THEME.light;
+  const root = document.documentElement.style;
+  root.setProperty('--walked', t.walked);
+  root.setProperty('--ink', t.ink);
+}
+
+BASEMAPS.Streets.layer.addTo(map);
+setBasemapTheme(BASEMAPS.Streets.dark);
+L.control.layers(
+  Object.fromEntries(Object.entries(BASEMAPS).map(([k, v]) => [k, v.layer])),
+  null, { position: 'topright' }).addTo(map);
 
 const dots = L.layerGroup().addTo(map);
 const marks = L.layerGroup().addTo(map);
 const canvas = L.canvas({ padding: 0.3 });
-let lastLoaded = [], lastQuery = null;
+let lastLoaded = [], lastQuery = null, lastBest = null;
+
+function cssVar(name) {
+  return getComputedStyle(document.documentElement)
+    .getPropertyValue(name).trim();
+}
 
 function fmt(miles) {
   const ft = miles * 5280;
@@ -235,8 +281,7 @@ function drawPoints(loaded, plat, plon) {
       if (Math.sqrt(dy * dy + dx * dx) > limit) continue;
       L.circleMarker([tile.lat[k], tile.lon[k]], {
         renderer: canvas, radius: 1.6, stroke: false,
-        fillColor: getComputedStyle(document.documentElement)
-          .getPropertyValue('--walked').trim(), fillOpacity: 0.75,
+        fillColor: cssVar('--walked'), fillOpacity: 0.75,
       }).addTo(dots);
       if (++drawn > 12000) return;
     }
@@ -252,7 +297,7 @@ function strava(id) {
 
 function show(html) { document.getElementById('result').innerHTML = html; }
 
-function render(label, plat, plon, best) {
+function render(label, plat, plon, best, fit = true) {
   if (!best) {
     show('<div class="err">No walked points anywhere near that.</div>' +
          '<div class="hint">Is it inside Connecticut?</div>');
@@ -277,14 +322,18 @@ function render(label, plat, plon, best) {
   L.marker([plat, plon], { icon: L.divIcon({ className: '', html:
     '<div class="pin"></div>', iconSize: [14, 14], iconAnchor: [7, 7] }) })
     .addTo(marks).bindPopup(label);
-  L.circleMarker([best.lat, best.lon], { radius: 5, color: '#fff', weight: 2,
-    fillColor: getComputedStyle(document.documentElement)
-      .getPropertyValue('--walked').trim(), fillOpacity: 1 })
+  L.circleMarker([best.lat, best.lon], { radius: 5, color: cssVar('--ink'),
+    weight: 2, fillColor: cssVar('--walked'), fillOpacity: 1 })
     .addTo(marks).bindPopup(n + ' ' + unit + '<br>' + a[1]);
   L.polyline([[plat, plon], [best.lat, best.lon]], {
-    color: '#fff', weight: 1.5, dashArray: '4 4', opacity: 0.8 }).addTo(marks);
-  map.fitBounds(L.latLngBounds([[plat, plon], [best.lat, best.lon]]),
-                { padding: [60, 60], maxZoom: 17 });
+    color: cssVar('--ink'), weight: 1.5, dashArray: '4 4', opacity: 0.8 })
+    .addTo(marks);
+  // Re-rendering after a basemap change must not yank the view back; the
+  // viewer may have panned away since the search.
+  if (fit) {
+    map.fitBounds(L.latLngBounds([[plat, plon], [best.lat, best.lon]]),
+                  { padding: [60, 60], maxZoom: 17 });
+  }
 }
 
 async function query(plat, plon, label) {
@@ -292,6 +341,7 @@ async function query(plat, plon, label) {
   show('<div class="spin">Looking...</div>');
   const { best, loaded } = await nearest(plat, plon);
   lastLoaded = loaded;
+  lastBest = best;
   drawPoints(loaded, plat, plon);
   render(label, plat, plon, best);
   const url = new URL(location.href);
@@ -353,6 +403,16 @@ document.getElementById('form').addEventListener('submit', async (e) => {
     return;
   }
   query(hit.lat, hit.lon, hit.label);
+});
+
+map.on('baselayerchange', (e) => {
+  const picked = Object.values(BASEMAPS).find(b => b.layer === e.layer);
+  if (!picked) return;
+  setBasemapTheme(picked.dark);
+  if (lastQuery) {
+    drawPoints(lastLoaded, lastQuery.plat, lastQuery.plon);
+    render(lastQuery.label, lastQuery.plat, lastQuery.plon, lastBest, false);
+  }
 });
 
 map.on('click', (e) => {

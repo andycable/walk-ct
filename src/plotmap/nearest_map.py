@@ -34,7 +34,12 @@ OUTPUT_HTML = SITE_DIR / "index.html"
 CARTO_KEY_ENV = "CARTO"
 
 ACCENT = "#d000d0"          # matches squadrats.SQUADRAT_COLOR
-WALKED_COLOR = "#38bdf8"    # the walked points, distinct from the squadrat pink
+
+# The walked points, distinct from the squadrat pink. Two of them: the sky blue
+# is unreadable on the Streets and Light basemaps, and the deep blue disappears
+# on Dark and Satellite. The page swaps them with the basemap.
+WALKED_DARK = "#38bdf8"
+WALKED_LIGHT = "#0369a1"
 
 # Connecticut, for the geocoder viewbox and the "is this even in CT" check.
 CT_BBOX = (40.95, 42.06, -73.75, -71.78)   # south, north, west, east
@@ -50,7 +55,9 @@ def carto_key(explicit=None):
     key = explicit or os.environ.get(CARTO_KEY_ENV, "")
     if not key:
         print(f"WARNING: no {CARTO_KEY_ENV} environment variable and no "
-              f"--carto-key given; falling back to OpenStreetMap tiles.")
+              f"--carto-key given.")
+        print(f"         Basemap tiles will be watermarked, and regenerating "
+              f"this way strips the key out of {OUTPUT_HTML.name}.")
     return key
 
 
@@ -78,7 +85,10 @@ TEMPLATE = """<!doctype html>
     --text: #e6e8ec;
     --dim: #9aa2b1;
     --accent: __ACCENT__;
-    --walked: __WALKED__;
+    /* Both are repainted by setBasemapTheme() when the basemap changes: the
+       sky blue and the white line vanish against Streets and Light. */
+    --walked: __WALKED_DARK__;
+    --ink: #ffffff;
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
@@ -269,12 +279,55 @@ async function nearest(plat, plon) {
 
 /* ---- map ---- */
 const map = L.map('map', { zoomControl: true }).setView([41.6, -72.7], 9);
-L.tileLayer(__BASEMAP__, { maxZoom: 19, attribution: __ATTRIBUTION__ }).addTo(map);
+
+/* The same four basemaps squadrats_map.html offers, defaulting to Streets for
+   the same reason: a dark basemap makes a street-level answer hard to read,
+   and the two pages should not disagree about what Connecticut looks like.
+
+   Each carries whether it is dark, because the marks drawn on top have to
+   flip with it - sky blue dots and a white leader line disappear on Streets,
+   and their dark counterparts disappear on Dark. */
+const CARTO_SUFFIX = '__CARTO_SUFFIX__';
+function cartoLayer(style) {
+  return L.tileLayer(
+    'https://basemaps.cartocdn.com/rastertiles/' + style + '/{z}/{x}/{y}.png' + CARTO_SUFFIX,
+    { maxZoom: 20, attribution: __CARTO_ATTR__ });
+}
+const BASEMAPS = {
+  'Streets': { layer: cartoLayer('voyager'), dark: false },
+  'Light': { layer: cartoLayer('light_all'), dark: false },
+  'Dark': { layer: cartoLayer('dark_all'), dark: true },
+  'Satellite': { layer: L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      { maxZoom: 19, attribution: 'Imagery &copy; Esri' }), dark: true },
+};
+const THEME = {
+  dark: { walked: '__WALKED_DARK__', ink: '#ffffff' },
+  light: { walked: '__WALKED_LIGHT__', ink: '#1f2937' },
+};
+
+function setBasemapTheme(isDark) {
+  const t = isDark ? THEME.dark : THEME.light;
+  const root = document.documentElement.style;
+  root.setProperty('--walked', t.walked);
+  root.setProperty('--ink', t.ink);
+}
+
+BASEMAPS.Streets.layer.addTo(map);
+setBasemapTheme(BASEMAPS.Streets.dark);
+L.control.layers(
+  Object.fromEntries(Object.entries(BASEMAPS).map(([k, v]) => [k, v.layer])),
+  null, { position: 'topright' }).addTo(map);
 
 const dots = L.layerGroup().addTo(map);
 const marks = L.layerGroup().addTo(map);
 const canvas = L.canvas({ padding: 0.3 });
-let lastLoaded = [], lastQuery = null;
+let lastLoaded = [], lastQuery = null, lastBest = null;
+
+function cssVar(name) {
+  return getComputedStyle(document.documentElement)
+    .getPropertyValue(name).trim();
+}
 
 function fmt(miles) {
   const ft = miles * 5280;
@@ -298,8 +351,7 @@ function drawPoints(loaded, plat, plon) {
       if (Math.sqrt(dy * dy + dx * dx) > limit) continue;
       L.circleMarker([tile.lat[k], tile.lon[k]], {
         renderer: canvas, radius: 1.6, stroke: false,
-        fillColor: getComputedStyle(document.documentElement)
-          .getPropertyValue('--walked').trim(), fillOpacity: 0.75,
+        fillColor: cssVar('--walked'), fillOpacity: 0.75,
       }).addTo(dots);
       if (++drawn > 12000) return;
     }
@@ -315,7 +367,7 @@ function strava(id) {
 
 function show(html) { document.getElementById('result').innerHTML = html; }
 
-function render(label, plat, plon, best) {
+function render(label, plat, plon, best, fit = true) {
   if (!best) {
     show('<div class="err">No walked points anywhere near that.</div>' +
          '<div class="hint">Is it inside Connecticut?</div>');
@@ -340,14 +392,18 @@ function render(label, plat, plon, best) {
   L.marker([plat, plon], { icon: L.divIcon({ className: '', html:
     '<div class="pin"></div>', iconSize: [14, 14], iconAnchor: [7, 7] }) })
     .addTo(marks).bindPopup(label);
-  L.circleMarker([best.lat, best.lon], { radius: 5, color: '#fff', weight: 2,
-    fillColor: getComputedStyle(document.documentElement)
-      .getPropertyValue('--walked').trim(), fillOpacity: 1 })
+  L.circleMarker([best.lat, best.lon], { radius: 5, color: cssVar('--ink'),
+    weight: 2, fillColor: cssVar('--walked'), fillOpacity: 1 })
     .addTo(marks).bindPopup(n + ' ' + unit + '<br>' + a[1]);
   L.polyline([[plat, plon], [best.lat, best.lon]], {
-    color: '#fff', weight: 1.5, dashArray: '4 4', opacity: 0.8 }).addTo(marks);
-  map.fitBounds(L.latLngBounds([[plat, plon], [best.lat, best.lon]]),
-                { padding: [60, 60], maxZoom: 17 });
+    color: cssVar('--ink'), weight: 1.5, dashArray: '4 4', opacity: 0.8 })
+    .addTo(marks);
+  // Re-rendering after a basemap change must not yank the view back; the
+  // viewer may have panned away since the search.
+  if (fit) {
+    map.fitBounds(L.latLngBounds([[plat, plon], [best.lat, best.lon]]),
+                  { padding: [60, 60], maxZoom: 17 });
+  }
 }
 
 async function query(plat, plon, label) {
@@ -355,6 +411,7 @@ async function query(plat, plon, label) {
   show('<div class="spin">Looking...</div>');
   const { best, loaded } = await nearest(plat, plon);
   lastLoaded = loaded;
+  lastBest = best;
   drawPoints(loaded, plat, plon);
   render(label, plat, plon, best);
   const url = new URL(location.href);
@@ -418,6 +475,16 @@ document.getElementById('form').addEventListener('submit', async (e) => {
   query(hit.lat, hit.lon, hit.label);
 });
 
+map.on('baselayerchange', (e) => {
+  const picked = Object.values(BASEMAPS).find(b => b.layer === e.layer);
+  if (!picked) return;
+  setBasemapTheme(picked.dark);
+  if (lastQuery) {
+    drawPoints(lastLoaded, lastQuery.plat, lastQuery.plon);
+    render(lastQuery.label, lastQuery.plat, lastQuery.plon, lastBest, false);
+  }
+});
+
 map.on('click', (e) => {
   const { lat, lng } = e.latlng;
   query(lat, lng, lat.toFixed(5) + ', ' + lng.toFixed(5));
@@ -456,13 +523,8 @@ document.getElementById('show-pts').addEventListener('change', () => {
 </html>
 """
 
-CARTO_URL = ("https://{{s}}.basemaps.cartocdn.com/dark_all/"
-             "{{z}}/{{x}}/{{y}}{{r}}.png{suffix}")
 CARTO_ATTR = ('&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
               ' &copy; <a href="https://carto.com/attributions">CARTO</a>')
-OSM_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-OSM_ATTR = ('&copy; <a href="https://www.openstreetmap.org/copyright">'
-            'OpenStreetMap</a> contributors')
 
 
 def main():
@@ -474,8 +536,6 @@ def main():
 
     meta = load_index()
     key = carto_key(args.carto_key)
-    basemap = CARTO_URL.format(suffix=f"?key={key}") if key else OSM_URL
-    attribution = CARTO_ATTR if key else OSM_ATTR
 
     activities = meta["activities"]
     grid = {k: v for k, v in meta.items() if k != "points"}
@@ -484,10 +544,11 @@ def main():
         TEMPLATE
         .replace("__GRID__", json.dumps(grid, separators=(",", ":")))
         .replace("__CT_BBOX__", json.dumps(list(CT_BBOX)))
-        .replace("__BASEMAP__", json.dumps(basemap))
-        .replace("__ATTRIBUTION__", json.dumps(attribution))
+        .replace("__CARTO_SUFFIX__", f"?key={key}" if key else "")
+        .replace("__CARTO_ATTR__", json.dumps(CARTO_ATTR))
         .replace("__ACCENT__", ACCENT)
-        .replace("__WALKED__", WALKED_COLOR)
+        .replace("__WALKED_DARK__", WALKED_DARK)
+        .replace("__WALKED_LIGHT__", WALKED_LIGHT)
         .replace("__MAX_DIST__", str(MAX_CT_DISTANCE))
         .replace("__POINTS__", f"{meta['points']:,}")
         .replace("__ACTIVITIES__", f"{len(activities):,}")
