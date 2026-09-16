@@ -24,10 +24,21 @@ import json
 import os
 from pathlib import Path
 
+import coverage_bands
+import heatmap_overlay
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SITE_DIR = REPO_ROOT / "connecticut-ultrawalker"
 TILE_DIR = SITE_DIR / "tiles"
 OUTPUT_HTML = SITE_DIR / "index.html"
+
+# The coverage heatmap rides as a FILE beside the page, not as a data URI
+# baked into it the way squadrats_map.html carries its copy. That page has to
+# survive being double-clicked off file://; this one fetches its point tiles
+# over http(s) regardless, so a separate PNG costs nothing and keeps ~240 KB
+# of base64 out of the committed HTML - and lets the browser cache the raster
+# apart from the page that changes every rebuild.
+HEATMAP_PNG = SITE_DIR / "heatmap.png"
 
 # Same key handling as squadrats_map.py: read from the environment and bake it
 # into the committed HTML.
@@ -141,6 +152,13 @@ TEMPLATE = """<!doctype html>
   footer { padding: 12px 16px; color: var(--dim); font-size: 11.5px; margin-top: auto; }
   footer b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
   label.toggle { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--dim); margin-top: 10px; }
+  /* Nearest-neighbour, or the browser smooths a 0.001-degree lattice into
+     mush and the quarter-mile bands stop having edges. */
+  .heatmap-img { image-rendering: pixelated; image-rendering: crisp-edges; }
+  #heat-opacity { width: 100%; margin: 8px 0 2px; accent-color: var(--accent); }
+  .legend { display: flex; flex-wrap: wrap; gap: 2px 8px; margin-top: 6px; }
+  .legend span { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--dim); }
+  .legend i { width: 11px; height: 11px; border: 1px solid #0006; flex: none; }
   #map { flex: 1; min-width: 0; background: var(--bg); }
   .leaflet-container { background: #0e1013; }
   .pin {
@@ -173,6 +191,10 @@ TEMPLATE = """<!doctype html>
       &middot; <a href="#" id="locate">use my location</a></div>
     <label class="toggle"><input type="checkbox" id="show-pts" checked>
       show my walked points nearby</label>
+    <label class="toggle"><input type="checkbox" id="show-heat" checked>
+      show the coverage heatmap</label>
+    <input type="range" id="heat-opacity" min="0" max="100" value="65">
+    <div class="legend" id="legend"></div>
   </div>
   <div id="result"><span class="muted">Enter an address to begin.</span></div>
   <footer>
@@ -188,6 +210,8 @@ TEMPLATE = """<!doctype html>
 const G = __GRID__;
 const CT = __CT_BBOX__;            // [south, north, west, east]
 const MAX_DIST = __MAX_DIST__;
+const HEATMAP = __HEATMAP__;       // {url, bounds} or null
+const HEAT_BANDS = __HEAT_BANDS__;
 const I0 = Math.round(G.lat0 / G.tile), J0 = Math.round(G.lon0 / G.tile);
 const TILES = new Set(G.tiles);
 const cache = new Map();
@@ -326,6 +350,42 @@ setBasemapTheme(BASEMAPS.Streets.dark);
 L.control.layers(
   Object.fromEntries(Object.entries(BASEMAPS).map(([k, v]) => [k, v.layer])),
   null, { position: 'topright' }).addTo(map);
+
+/* The coverage heatmap: how far every corner of Connecticut is from somewhere
+   I have walked, on the same quarter-mile bands as squadrats_map.html and the
+   per-town PNGs, from the same Distance_3_ct.csv.
+
+   Its own pane between the basemap tiles (200) and the vector overlays (400),
+   so the walked dots and the answer marker draw ON TOP of the colours rather
+   than being washed out by them. pointerEvents none keeps it from eating the
+   map clicks this page is built around - tapping the map IS the query. */
+map.createPane('heatPane');
+map.getPane('heatPane').style.zIndex = 250;
+map.getPane('heatPane').style.pointerEvents = 'none';
+
+let heat = null;
+if (HEATMAP) {
+  heat = L.imageOverlay(HEATMAP.url, HEATMAP.bounds, {
+    pane: 'heatPane', opacity: 0.65, className: 'heatmap-img',
+    interactive: false,
+  }).addTo(map);
+
+  document.getElementById('legend').innerHTML = HEAT_BANDS
+    .map(([label, rgb]) => '<span><i style="background:' + rgb + '"></i>' +
+                           label + '</span>').join('');
+
+  document.getElementById('show-heat').addEventListener('change', (e) => {
+    if (e.target.checked) heat.addTo(map); else heat.remove();
+    document.getElementById('heat-opacity').disabled = !e.target.checked;
+  });
+  document.getElementById('heat-opacity').addEventListener('input', (e) => {
+    heat.setOpacity(e.target.value / 100);
+  });
+} else {
+  /* No raster to show, so do not leave dead controls in the sidebar. */
+  document.getElementById('show-heat').closest('label').style.display = 'none';
+  document.getElementById('heat-opacity').style.display = 'none';
+}
 
 const dots = L.layerGroup().addTo(map);
 const marks = L.layerGroup().addTo(map);
@@ -540,10 +600,21 @@ def main():
     ap.add_argument("--output", default=str(OUTPUT_HTML))
     ap.add_argument("--carto-key", default=None,
                     help="CARTO basemap key (default: the CARTO env var)")
+    ap.add_argument("--no-heatmap", action="store_true",
+                    help="skip the coverage heatmap overlay and its PNG")
     args = ap.parse_args()
 
     meta = load_index()
     key = carto_key(args.carto_key)
+
+    overlay = None if args.no_heatmap else heatmap_overlay.build_overlay()
+    if overlay:
+        HEATMAP_PNG.parent.mkdir(parents=True, exist_ok=True)
+        HEATMAP_PNG.write_bytes(overlay["png"])
+        print(f"Wrote {HEATMAP_PNG} "
+              f"({len(overlay['png']) / 1024:.0f} KB, {overlay['size'][0]}x"
+              f"{overlay['size'][1]})")
+        overlay = {"url": HEATMAP_PNG.name, "bounds": overlay["bounds"]}
 
     activities = meta["activities"]
     grid = {k: v for k, v in meta.items() if k != "points"}
@@ -558,6 +629,9 @@ def main():
         .replace("__WALKED_DARK__", WALKED_DARK)
         .replace("__WALKED_LIGHT__", WALKED_LIGHT)
         .replace("__MAX_DIST__", str(MAX_CT_DISTANCE))
+        .replace("__HEATMAP__", json.dumps(overlay, separators=(",", ":")))
+        .replace("__HEAT_BANDS__",
+                 json.dumps(coverage_bands.legend_pairs(), separators=(",", ":")))
         .replace("__POINTS__", f"{meta['points']:,}")
         .replace("__ACTIVITIES__", f"{len(activities):,}")
         .replace("__FIRST__", activities[0][1][:7])

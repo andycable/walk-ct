@@ -4,19 +4,32 @@ Type a Connecticut address; get the distance, as the crow flies, to the
 nearest point I have actually walked - plus the date, the walk, and a link to
 it on Strava.
 
-Everything here is generated. Do not hand-edit `index.html` or `tiles/`.
+Everything here is generated. Do not hand-edit `index.html`, `heatmap.png`
+or `tiles/`.
 
 ## Rebuilding
 
 ```
 cd src/plotmap
 python nearest_tiles.py     # tiles/ - 3,343 files, 8.3 MB
-python nearest_map.py       # index.html
+python nearest_map.py       # index.html + heatmap.png
 ```
 
 Run it after `do_current_month.bat` refreshes the activity parquet, in that
 order - the page bakes in the tile geometry and the activity table, so a tile
 rebuild without a page rebuild leaves the two out of step.
+
+`nearest_map.py` also needs `src/plotmap/Distance_3_ct.csv`, which is what the
+coverage heatmap is drawn from; `do_current_month.bat` rebuilds it earlier in
+the same run. Without it the page still builds, just with no heatmap and no
+heatmap controls. `--no-heatmap` skips it deliberately.
+
+The heatmap ships as a SEPARATE PNG rather than a data URI inside the page,
+which is the opposite of what `squadrats_map.html` does. That page has to
+survive being double-clicked off `file://`, where a sibling image is a request
+the browser will not make; this one already requires a server for its tiles,
+so the file keeps ~240 KB of base64 out of the committed HTML and lets the
+browser cache the raster separately from the page.
 
 ## Viewing it
 
