@@ -14,3 +14,9 @@ temp_read_parquet.R
 # OSM road data fetched by find_unreachable_squadrats.py (35MB, re-fetchable
 # from Overpass and rebuilt region by region if deleted)
 src/plotmap/road_network_cache.json
+
+# find_largest_unwalked.py output. Regenerated from Distance_3_ct.csv in
+# seconds, and unlike the other plotmap PNGs it is a one-off diagnostic rather
+# than a picture the repo publishes, so it kept turning up in `git add -A`.
+src/plotmap/Largest_Unwalked.png
+src/plotmap/Largest_Unwalked_Zoom.png
