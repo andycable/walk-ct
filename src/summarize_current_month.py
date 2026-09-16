@@ -53,8 +53,9 @@ def load_activity_metadata(csv_path: Path) -> Dict[int, Dict]:
         return {}
 
     try:
-        df = pd.read_csv(csv_path, usecols=["Activity ID", "Activity Date", "Activity Name", "Activity Type"])
+        df = pd.read_csv(csv_path, usecols=["Activity ID", "Activity Date", "Activity Name", "Activity Type", "Filename"])
         metadata = {}
+        by_filename = {}
 
         for _, row in df.iterrows():
             activity_id = int(row["Activity ID"])
@@ -65,13 +66,26 @@ def load_activity_metadata(csv_path: Path) -> Dict[int, Dict]:
                 activity_date = None
 
             meta = {
+                # The activity's OWN id, which is not the number in its
+                # filename: Strava names a .fit.gz after the UPLOAD id, and the
+                # two differ for 36% of this archive. Callers look meta up by
+                # whichever number they have and take the real id from here.
+                "activity_id": activity_id,
                 "name": row["Activity Name"],
                 "type": row["Activity Type"],
                 "date": activity_date,
             }
             metadata[activity_id] = meta
 
-        return metadata
+            # Key by filename stem as well. Looking up by activity id alone
+            # missed every mismatched .fit.gz, which is how 53 activities ended
+            # up named "21191090750.fit" with no activity_type.
+            if pd.notna(row["Filename"]):
+                stem = Path(row["Filename"]).stem.split(".")[0]
+                if stem.isdigit():
+                    by_filename[int(stem)] = meta
+
+        return {**metadata, **by_filename}
     except Exception as e:
         print(f"Warning: Failed to load metadata: {e}")
         return {}
@@ -266,9 +280,16 @@ def main():
         for filepath in sorted(STRAVA_EXPORT_DIR.iterdir()):
             if filepath.is_file():
                 try:
-                    activity_id = int(filepath.stem.split('.')[0])
+                    file_id = int(filepath.stem.split('.')[0])
                 except ValueError:
                     continue
+
+                # What goes in the parquet is the ACTIVITY id, not the upload
+                # id the file is named after. The skip test below compares
+                # against an id read back out of last month's parquet, so it
+                # has to happen after this or it compares two numbering
+                # schemes - upload ids run higher than activity ids.
+                activity_id = metadata.get(file_id, {}).get("activity_id", file_id)
 
                 # Skip activities that were already processed in a previous month
                 if activity_id <= min_activity_id:

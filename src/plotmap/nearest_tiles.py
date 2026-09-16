@@ -94,18 +94,18 @@ def strava_id_map(path=STRAVA_METADATA_CSV):
     2024-08-20 is activity 12194819959 in activities/13001082611.fit.gz. It
     disagrees for 657 of 1,803 rows, 36%.
 
-    That was invisible until this page turned the id into a link, and it is
-    only fixed here - the parquet still carries the upload id, which would take
-    a full re-extraction to correct. Names and dates were always right; the
-    extractors key metadata by filename stem precisely because of this
-    mismatch, they just never write the id back.
+    Both extractors now store the activity id, and src/fix_activity_ids.py
+    repaired the 3.4M rows written before they did, so this normally applies to
+    nothing. It stays as a guard: a month restored from an older copy, or
+    re-extracted with older code, would otherwise put wrong Strava links on a
+    public page, and silently. main() reports how many it actually had to fix.
 
     Returns {} if the export index is missing, which leaves the ids as they
     were rather than failing the build.
     """
     if not path.exists():
-        print(f"WARNING: {path} not found - Strava links will use the upload "
-              f"ids in the parquet, which are wrong for about a third of them.")
+        print(f"WARNING: {path} not found - cannot check activity ids. Any "
+              f"written by pre-2026-09 code will link to the wrong walk.")
         return {}
 
     meta = pd.read_csv(path, usecols=["Activity ID", "Filename"])
@@ -116,7 +116,6 @@ def strava_id_map(path=STRAVA_METADATA_CSV):
         stem = Path(fname).stem.split(".")[0]
         if stem.isdigit() and int(stem) != int(aid):
             fixes[int(stem)] = int(aid)
-    print(f"{len(fixes):,} activity ids repaired from {path.name}")
     return fixes
 
 
@@ -143,9 +142,12 @@ def activity_table(df):
     idx = df.activity_id.map(code).to_numpy(dtype=np.int64)
 
     fixes = strava_id_map()
+    repaired = 0
     rows = []
     for aid, date, name in meta.itertuples(index=False):
-        aid = fixes.get(int(aid), int(aid))
+        if int(aid) in fixes:
+            aid = fixes[int(aid)]
+            repaired += 1
         name = "" if pd.isna(name) else str(name).strip()
         # The FIT half of the archive is named after the activity id, which
         # tells a reader nothing the date and the link do not already say.
@@ -153,6 +155,9 @@ def activity_table(df):
             name = ""
         rows.append([int(aid), str(date), name])
     print(f"{len(rows):,} activities, {rows[0][1]} to {rows[-1][1]}")
+    if repaired:
+        print(f"WARNING: {repaired:,} activity ids in the parquet were upload "
+              f"ids and were repaired here; run src/fix_activity_ids.py")
     return rows, idx
 
 

@@ -54,6 +54,11 @@ def load_activity_metadata(csv_path: Path, target_year: int, target_month: int) 
                 continue
 
             meta = {
+                # The activity's OWN id. The filename stem below is a
+                # different number for a .fit.gz - Strava names those after
+                # the UPLOAD id - so a caller holding the stem must take the
+                # id from here rather than from the filename it looked up by.
+                "activity_id": activity_id,
                 "name": row["Activity Name"],
                 "type": row["Activity Type"],
                 "date": activity_date,
@@ -250,14 +255,19 @@ def main():
         for filepath in sorted(STRAVA_EXPORT_DIR.iterdir()):
             if filepath.is_file():
                 try:
-                    activity_id = int(filepath.stem.split('.')[0])
+                    file_id = int(filepath.stem.split('.')[0])
                 except ValueError:
                     # Skip non-numeric filenames
                     continue
 
                 # Skip if activity is not in target month metadata
-                if activity_id not in metadata:
+                if file_id not in metadata:
                     continue
+
+                # What goes in the parquet is the ACTIVITY id, not the upload
+                # id this file is named after. metadata is keyed by both, so
+                # the parsers still find their row when handed the real id.
+                activity_id = metadata[file_id].get("activity_id", file_id)
 
                 points = []
 
