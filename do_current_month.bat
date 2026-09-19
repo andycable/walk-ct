@@ -1,4 +1,4 @@
-: src\plotmap\heatmap.png
+@call carto.bat
 python src\summarize_current_month.py
 python src\generate_4decimal_files.py
 pushd src\plotmap
@@ -16,7 +16,3 @@ REM activity table into index.html, so rebuilding one without the other leaves
 REM the page pointing at tiles that no longer match it.
 python nearest_tiles.py
 python nearest_map.py
-
-: heatmap.png
-: squadrats_map.html
-: connecticut-ultrawalker\index.html
