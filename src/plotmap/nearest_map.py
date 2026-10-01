@@ -25,6 +25,7 @@ import os
 from pathlib import Path
 
 import coverage_bands
+import ct_outline
 import heatmap_overlay
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -55,6 +56,11 @@ WALKED_LIGHT = "#0369a1"
 # Connecticut, for the geocoder viewbox and the "is this even in CT" check.
 CT_BBOX = (40.95, 42.06, -73.75, -71.78)   # south, north, west, east
 
+# Each town's box is padded this far, in degrees (~0.3 mi), before it bounds
+# the geocoder: an address on a boundary road can sit a few metres over the
+# line it is filed under.
+TOWN_PAD = 0.005
+
 # The furthest any point in Connecticut is from somewhere I have walked, in
 # miles, straight off Distance_3_ct.csv. It bounds the tile ring search and it
 # is the most quotable number on the page.
@@ -77,6 +83,22 @@ def carto_key(explicit=None):
         print(f"         Basemap tiles will be watermarked, and regenerating "
               f"this way strips the key out of {OUTPUT_HTML.name}.")
     return key
+
+
+def town_boxes(pad=TOWN_PAD):
+    """[[name, south, north, west, east], ...] for the 169 towns, by name.
+
+    For the town pick-list: a picked town bounds the geocoder to its box and
+    zooms the map to it. Boxes rather than outlines - 169 rectangles are ~7 KB
+    in the page, the outlines would be megabytes, and the geocoder only takes
+    a rectangle anyway.
+    """
+    boxes = []
+    for name, poly in ct_outline.town_polygons():
+        w, s, e, n = poly.bounds
+        boxes.append([name, round(s - pad, 4), round(n + pad, 4),
+                      round(w - pad, 4), round(e + pad, 4)])
+    return sorted(boxes)
 
 
 def load_index(path=TILE_DIR / "index.json"):
@@ -130,6 +152,12 @@ TEMPLATE = """<!doctype html>
     font-size: 16px;   /* 16px or iOS zooms the whole page on focus */
   }
   input[type=search]:focus { outline: none; border-color: var(--accent); }
+  select#town {
+    width: 100%; margin-bottom: 6px; padding: 8px 8px; border-radius: 6px;
+    background: #12141a; color: var(--text); border: 1px solid var(--line);
+    font-size: 16px;   /* same iOS focus-zoom rule as the search box */
+  }
+  select#town:focus { outline: none; border-color: var(--accent); }
   button {
     padding: 9px 12px; border-radius: 6px; border: 1px solid var(--line);
     background: #262b34; color: var(--text); font-size: 13px; cursor: pointer;
@@ -182,6 +210,7 @@ TEMPLATE = """<!doctype html>
     <div class="sub">How close have I walked to your door?</div>
   </header>
   <div class="controls">
+    <select id="town" aria-label="Town"><option value="">Any town</option></select>
     <form id="form">
       <input type="search" id="q" placeholder="Address, or town in CT"
              autocomplete="off" autocapitalize="off" spellcheck="false">
@@ -209,6 +238,7 @@ TEMPLATE = """<!doctype html>
 <script>
 const G = __GRID__;
 const CT = __CT_BBOX__;            // [south, north, west, east]
+const TOWNS = __TOWNS__;           // [[name, south, north, west, east], ...]
 const MAX_DIST = __MAX_DIST__;
 const HEATMAP = __HEATMAP__;       // {url, bounds} or null
 const HEAT_BANDS = __HEAT_BANDS__;
@@ -494,21 +524,64 @@ async function query(plat, plon, label) {
    so it cannot be called from a page at all. Photon picks up what Nominatim
    misses. Both are volunteer-run: one request per submit, never per keystroke.
    https://operations.osmfoundation.org/policies/nominatim/ */
-async function geocode(text) {
-  const box = CT[2] + ',' + CT[1] + ',' + CT[3] + ',' + CT[0];  // W,N,E,S
+/* Every query is a Connecticut query. A bare "12 Main St" otherwise lands in
+   whichever Main St the geocoder likes best - the CT viewbox is a rectangle
+   that takes in slices of NY, MA and RI, and Photon ignores it entirely - so
+   the state goes on the end of the text, and a result only counts if the
+   geocoder itself puts it in Connecticut. A trailing "CT" is spelled out
+   rather than trusted: Nominatim reads "Greenwich CT" as Greenwich Court, in
+   Middletown. */
+function qualify(text, town) {
+  const m = text.match(/^(.*?)[,\\s]*\\b(?:ct|conn|connecticut)\\b[.\\s]*(\\d{5})?\\s*$/i);
+  const base = m ? m[1] : text, zip = m && m[2] ? ' ' + m[2] : '';
+  return base + (town ? ', ' + town[0] : '') + ', Connecticut' + zip;
+}
+
+/* With a town picked, the search is bounded to that town's box, and inside
+   the box a result that names the town beats one that does not - the box is
+   a rectangle, so it always takes in corners of the neighbours. A town is
+   named in a result if any address field is the town: OSM files the town
+   under town, city or municipality depending on who mapped it, and a village
+   like Mystic or Moosup puts its own name in front of the town's. */
+function names(fields, town) {
+  return !town || Object.values(fields || {}).includes(town[0]);
+}
+
+function inBox(lat, lon, b) {
+  return lat >= b[0] && lat <= b[1] && lon >= b[2] && lon <= b[3];
+}
+
+function pick(hits, town) {
+  return hits.find(h => names(h.fields, town)) || hits[0] || null;
+}
+
+async function geocode(text, town) {
+  const b = town ? town.slice(1) : CT;                       // [S, N, W, E]
+  const box = b[2] + ',' + b[1] + ',' + b[3] + ',' + b[0];    // W,N,E,S
+  const q = encodeURIComponent(qualify(text, town));
   try {
     const r = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2'
-      + '&limit=1&countrycodes=us&bounded=1&viewbox=' + box
-      + '&q=' + encodeURIComponent(text));
+      + '&limit=5&addressdetails=1&countrycodes=us&bounded=1&viewbox=' + box
+      + '&q=' + q);
     const j = await r.json();
-    if (j.length) return { lat: +j[0].lat, lon: +j[0].lon, label: j[0].display_name };
+    const h = pick(j
+      .filter(x => x.address && x.address['ISO3166-2-lvl4'] === 'US-CT'
+                   && inBox(+x.lat, +x.lon, b))
+      .map(x => ({ lat: +x.lat, lon: +x.lon, label: x.display_name,
+                   fields: x.address })), town);
+    if (h) return h;
   } catch (e) { /* fall through to Photon */ }
   try {
-    const r = await fetch('https://photon.komoot.io/api/?limit=1&lat=41.6&lon=-72.7&q='
-      + encodeURIComponent(text));
+    const r = await fetch('https://photon.komoot.io/api/?limit=5&lat=41.6&lon=-72.7'
+      + '&bbox=' + b[2] + ',' + b[0] + ',' + b[3] + ',' + b[1]
+      + '&q=' + q);
     const j = await r.json();
-    if (j.features && j.features.length) {
-      const f = j.features[0], c = f.geometry.coordinates, p = f.properties;
+    const f = pick((j.features || [])
+      // Photon spells the state out for streets but sends "CT" for addresses.
+      .filter(f => ['Connecticut', 'CT'].includes(f.properties.state))
+      .map(f => ({ f, fields: f.properties })), town);
+    if (f) {
+      const c = f.f.geometry.coordinates, p = f.f.properties;
       const label = [p.name, p.street, p.city, p.state].filter(Boolean).join(', ');
       return { lat: c[1], lon: c[0], label: label || text };
     }
@@ -520,18 +593,63 @@ function inCT(lat, lon) {
   return lat >= CT[0] && lat <= CT[1] && lon >= CT[2] && lon <= CT[3];
 }
 
+/* ---- the town pick-list ----
+   Picking a town zooms the map to it and narrows every search to it, so all
+   that is left to type is the street. "Any town" puts the old whole-state
+   search back. */
+const townSel = document.getElementById('town');
+townSel.insertAdjacentHTML('beforeend', TOWNS
+  .map((t, i) => '<option value="' + i + '">' + t[0] + '</option>').join(''));
+
+function pickedTown() {
+  return townSel.value === '' ? null : TOWNS[+townSel.value];
+}
+
+function fitTown(t) {
+  map.fitBounds([[t[1], t[3]], [t[2], t[4]]], { padding: [20, 20] });
+}
+
+function setTownUi() {
+  const t = pickedTown();
+  document.getElementById('q').placeholder =
+    t ? 'Street or street address in ' + t[0] : 'Address, or town in CT';
+}
+
+townSel.addEventListener('change', () => {
+  const t = pickedTown();
+  setTownUi();
+  const url = new URL(location.href);
+  if (t) url.searchParams.set('town', t[0]); else url.searchParams.delete('town');
+  history.replaceState(null, '', url);
+  if (!t) return;
+  fitTown(t);
+  document.getElementById('q').focus();
+});
+
 document.getElementById('form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const text = document.getElementById('q').value.trim();
-  if (!text) return;
+  const town = pickedTown();
+  if (!text) {
+    if (town) {
+      fitTown(town);
+      show('<div class="muted">Type a street in ' + town[0] +
+           ', or tap the map.</div>');
+    }
+    return;
+  }
   const go = document.getElementById('go');
   go.disabled = true;
   show('<div class="spin">Finding that address...</div>');
-  const hit = await geocode(text);
+  const hit = await geocode(text, town);
   go.disabled = false;
   if (!hit) {
-    show('<div class="err">Could not find that address.</div>' +
-         '<div class="hint">Try adding the town, or tap the map instead.</div>');
+    show(town
+      ? '<div class="err">Could not find that in ' + town[0] + '.</div>' +
+        '<div class="hint">Check the spelling, switch to Any town, or tap ' +
+        'the map instead.</div>'
+      : '<div class="err">Could not find that address.</div>' +
+        '<div class="hint">Try picking the town, or tap the map instead.</div>');
     return;
   }
   if (!inCT(hit.lat, hit.lon)) {
@@ -572,9 +690,16 @@ document.getElementById('show-pts').addEventListener('change', () => {
   if (lastQuery) drawPoints(lastLoaded, lastQuery.plat, lastQuery.plon);
 });
 
-/* A result is shareable: ?ll=lat,lon carries the exact point, ?q= the label. */
+/* A result is shareable: ?ll=lat,lon carries the exact point, ?q= the label,
+   ?town= the pick-list. */
 (function start() {
   const p = new URLSearchParams(location.search);
+  const ti = TOWNS.findIndex(t => t[0] === p.get('town'));
+  if (ti >= 0) {
+    townSel.value = String(ti);
+    setTownUi();
+    if (!p.get('ll') && !p.get('q')) fitTown(TOWNS[ti]);
+  }
   const ll = p.get('ll');
   if (ll && /^-?\\d+(\\.\\d+)?,-?\\d+(\\.\\d+)?$/.test(ll)) {
     const [a, b] = ll.split(',').map(Number);
@@ -623,6 +748,7 @@ def main():
         TEMPLATE
         .replace("__GRID__", json.dumps(grid, separators=(",", ":")))
         .replace("__CT_BBOX__", json.dumps(list(CT_BBOX)))
+        .replace("__TOWNS__", json.dumps(town_boxes(), separators=(",", ":")))
         .replace("__CARTO_SUFFIX__", f"?key={key}" if key else "")
         .replace("__CARTO_ATTR__", json.dumps(CARTO_ATTR))
         .replace("__ACCENT__", ACCENT)
